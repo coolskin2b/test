@@ -1,0 +1,3131 @@
+removelist jaseowns_PreviousScript
+createlist jaseowns_PreviousScript
+pushlist jaseowns_PreviousScript "Play Script: Mage\MageBotTamer"
+#######
+# Ultimate Mage Summoner Necro Bot Rewrite 2024 by Jaseowns
+# UO Outlands - jaseowns.com/discord
+# https://outlands.uorazorscripts.com/arcane-mage
+#####################
+overhead "Newer Mage Bot" 76
+overhead "WAR mode to fight stuff" 34
+overhead "PEACE to run around 7.3" 89
+#####################################
+# Recently Added:
+#######
+#   7/17/2024 - Do not always spam poison - use a timer
+#             - Stops the script and exits warmode if you hide    
+#   
+#   7/02/2024 - Handle invis mobs - works pretty good
+#             - GOAL: Codex change for shields (bleed etc)
+#
+#   7/01/2024 - Fixed: handle cure kegs
+#             - Fixed: Updated mushroooms
+#             - BUG: Kills person we ressed or healed
+#
+#   6/19/2024 - Target Nearest Mob While Figthing (better)
+#             - Heal Keg
+#             - Taunt
+#    
+#   6/17/2024 - Add Provo bard buff
+#             - Add option to only cure poison with pots
+#
+#   6/13/2024 - Fixed mushroom for realz
+#             - Only requip staff if in war mode
+#             - Added overheads for overweight
+#           
+#   6/12/2024 - Tried to fix Mushroom spam
+#             - Started to do targeting but failed and then FIRE (we did it)
+#             - Allowed 4 followers - set as a variable
+#
+#   6/11/2024 - made the default spells be like Jase Owns arcane character.
+#             - fixed cure spell not working correctly
+#             - fixed failing off your feet getting harmful cursor stuck (maybe)
+
+############
+# TODO LIST:
+#########
+# IMPROVE barding if you are bard
+# Denox wants bandages
+# improve bot when pets get summoned (use guard)
+# send in pet if dead and then rezzed (kinda handling with retarget timer)
+        # if it died and then is alive, at least use guard on menu
+# add elrich mana bar thingy ## status bar, 28135, 2617 
+# world save
+# Bleed / diease we pre-cast heal but its trying to cast on the monster
+# TODO: for TAMER - fix the  jaseowns_MyMainTamerPet so its dynamic.. maybe?
+# Weird lag with target selection? Warmode vs peacemdoe changing?
+
+######################################################################################
+##      HOW DOES THIS WORK?
+###########
+##  Update variables in the following sections based on your preference:
+
+##  DEBUG_MODE, AvoidCastingWhileMovingCD, Hp to cancel or drink pot while casting
+## MyMainTamerPet, Vet Kit Use, Mushroom, Autoskin, 
+##  ALL KILL timer, Using all guard, Pouch Pop, Meditation/Mana reserve preferences, Pots
+##  Necro Abilities, Spells, Summons
+
+########
+##  Most thing are behind a skill check, so if you setup summons but do not have spirit speak
+##  the script will not cast your pets
+
+########
+##     JASE - WHAT DO I NEED TO CHANGE TO USE THIS?
+##
+##  You should be able to just copy/paste/save/play out of the box.. HOWEVER:
+####  IF you are a TAMER: Update MyMainTamerPet
+#####  IF you are a SUMMONER: choose your pets (if you do not like my selection)
+######  IF you are a PURE MAGE: change your spells maybe
+########## 
+#######
+
+#####   Thank you for the support, please report bugs to https://jaseowns.com/discord
+#####       Do not forget to Like, Subscribe, Smash the Buttons
+
+######################################################################################
+
+####
+## Output system states = 1
+## No message = 0
+### 
+@setvar! jaseowns_DEBUG_MODE 0
+
+####
+##  Override current target while casting
+###
+@setvar! jaseowns_RetargetWhileCasting 1
+
+####
+##  Stops the script and exits warmode if you hide
+###
+@setvar! jaseowns_AutoStopScriptIfHidden 1
+
+# Set this to 0 to always cast, 500 for half a second, 1000 for full second
+# Requires "Moving" cooldown (Alt-o cooldowns)
+@setvar! jaseowns_AvoidCastingWhileMovingCD 500
+
+#####
+## Breaks spell cast if hps.. also check for pot
+###
+@setvar! jaseowns_HpCheckToInterruptCastIfLessThan 40
+@setvar! jaseowns_HpCheckToDrinkPotionCastIfLessThan 75
+
+#####
+## Taunting
+###
+@setvar! jaseowns_AutoTaunting 1
+@setvar! jaseowns_TauntingTimerCD 15000
+
+
+#####
+## ONLY USED FOR TAMERS AT THE MOMENT
+## Set Your Pet Variable Serial (>info on your main pet)
+## IF YOU ARE A SUMMONER OR ARCANE WIZARD - NO NEED TO CHANGE
+###
+if findtype "mycoolpetname" ground -1 -1 18 as jaseowns_FoundThisPet
+    @setvar! jaseowns_MyMainTamerPet jaseowns_FoundThisPet    
+else
+    @setvar! jaseowns_MyMainTamerPet 0x5280CF
+endif
+
+#####
+## Some Helper things related to Weight
+###
+@setvar! jaseowns_AutomaticallyDrinkStrPotIfOverWeight 1
+@setvar! jaseowns_WarnMeAtThisDiffWeight 10
+@setvar! jaseowns_WarnMeAtThisDiffWeightTimerCD 2000
+
+#####
+## Vet Kit Use Timer (Try every 5 seconds) = This will get set to 0 if you do not have the skill
+###
+@setvar! jaseowns_UseVetKits 1
+@setvar! jaseowns_VetKitTimerCD 5000
+
+#####
+## Using Mushroom
+###
+@setvar! jaseowns_EatShroomies 1
+@setvar! jaseowns_EatShroomiesTimerCD 60000
+@setvar! jaseowns_EatShroomiesAtDiffMana 35
+
+#####
+## Casting Mushroom
+###
+@setvar! jaseowns_CastMagicMushroomCount 10
+@setvar! jaseowns_CastMagicMushroomIfBelowCount 5
+
+#####
+## Auto Skin Corpses
+###
+@setvar! jaseowns_UseSkinningKnifeAutomatically 0
+
+###
+## Reuses ALL KILL after target selection (to confirm we fighting)
+###
+@setvar! jaseowns_UseAllKillOnSameTargetEverySomeSeconds 5000
+
+###
+## Says "All Guard" before using med skill
+###
+@setvar! jaseowns_UseAllGuardBeforeMed 1
+
+#####
+## Paralyze Pouch Pop
+###
+@setvar! jaseowns_UseRedPouchAutomatically 1
+
+#####
+## Meditation
+###
+@setvar! jaseowns_UseMeditationAutomatically 1
+@setvar! jaseowns_UseMeditationAtManaDiff 79
+@setvar! jaseowns_UseMeditationMinimalAmountTimerCD 8000
+@setvar! jaseowns_OkayToCancelMeditateAtHealthCheckDiff 30
+
+#####
+## Setup your Pots
+###
+@setvar! jaseowns_UseHealPotion 1
+@setvar! jaseowns_UseHealPotionTimerCD 10000
+@setvar! jaseowns_UseHealPotionAtHealthDiff 60
+
+# This will be used to grab from keg if you have one
+@setvar! jaseowns_CurePotCountInBackpack 2
+@setvar! jaseowns_HealthPotCountInBackpack 2
+
+@setvar! jaseowns_UseCurePotion 1
+@setvar! jaseowns_UseCurePotionOnlyInsteadOfCureSpell 1
+@setvar! jaseowns_UseCurePotionTimerCD 0
+@setvar! jaseowns_UseCurePotionAtHealthDiff 0
+
+@setvar! jaseowns_UseRefreshPotion 1
+@setvar! jaseowns_UseRefreshPotionTimerCD 3000
+@setvar! jaseowns_UseRefreshPotionAtStamDiff 5
+
+@setvar! jaseowns_UseStrengthPotion 1
+@setvar! jaseowns_UseStrengthPotionTimerCD 3000
+@setvar! jaseowns_UseStrengthPotionAtStrOrLess 95
+@setvar! jaseowns_UseStrengthPotionOnlyInWarMode 0
+
+@setvar! jaseowns_UseAgilityPotion 0
+@setvar! jaseowns_UseAgilityPotionTimerCD 3000
+@setvar! jaseowns_UseAgilityPotionAtDexOrLess 95
+@setvar! jaseowns_UseAgilityPotionOnlyInWarMode 1
+
+@setvar! jaseowns_UseMagicResistPotion 1
+@setvar! jaseowns_UseMagicResistPotionTimerCD 3000
+@setvar! jaseowns_UseMagicResistPotionOnlyIfMissingMagicReflection 1
+@setvar! jaseowns_UseMagicResistPotionOnlyInWarMode 1
+
+###############
+###  Choose your necro spells (ignored if less then required necro skill)
+######
+         ### PS only works atm if you cast poison
+@setvar! jaseowns_CastPoisonStrike 1
+@setvar! jaseowns_PoisonStrikeTimerCD 30500
+
+@setvar! jaseowns_CastEvilOmen 1
+@setvar! jaseowns_EvilOmenTimerCD 30500
+
+@setvar! jaseowns_CastCorpseSkin 1
+@setvar! jaseowns_CorpseSkinTimerCD 30500
+
+@setvar! jaseowns_CastVampiricEmbrace 1
+@setvar! jaseowns_VampiricEmbraceTimerCD 30500
+
+@setvar! jaseowns_CastMindRot 1
+@setvar! jaseowns_MindRotTimerCD 30500
+
+@setvar! jaseowns_CastBloodOath 1
+@setvar! jaseowns_BloodOathTimerCD 30500
+
+@setvar! jaseowns_CastStrangle 1
+@setvar! jaseowns_StrangleTimerCD 30500
+
+@setvar! jaseowns_CastPainSpike 1
+@setvar! jaseowns_PainSpikeTimerCD 30500    
+
+@setvar! requireWitherBeforeSummons 0
+@setvar! jaseowns_WitherTimerCD 30500
+
+@setvar! jaseowns_VengefulSpiritTimerCD 30500
+
+
+#####
+## Setup your Spells
+###
+
+# Curse
+@setvar! jaseowns_CastCurse 1
+@setvar! jaseowns_CastCurseMinMana 25
+
+# ManaDrain
+@setvar! jaseowns_CastManaDrain 0
+@setvar! jaseowns_CastManaDrainMinMana 25
+
+# Bless
+@setvar! jaseowns_CastBless 1
+@setvar! jaseowns_CastBlessMinMana 12
+
+# Reactive Armor
+@setvar! jaseowns_CastReactiveArmor 1
+@setvar! jaseowns_CastReactiveArmorMinMana 12
+
+# Arch Protection
+@setvar! jaseowns_CastArchProtection 1
+@setvar! jaseowns_CastArchProtectionMinMana 14
+
+# Magic Reflection
+@setvar! jaseowns_CastMagicReflection 1
+@setvar! jaseowns_CastMagicReflectionMinMana 14
+
+# Greater Healing
+@setvar! jaseowns_HealthCheckToCastHeal 72
+@setvar! jaseowns_CastGreaterHealMinMana 12
+@setvar! jaseowns_CastCureMinMana 6
+
+# Magic Arrow
+@setvar! jaseowns_CastMagicArrow 1
+@setvar! jaseowns_CastMagicArrowTimerCD 20000
+@setvar! jaseowns_CastMagicArrowMinMana 20
+
+# Harm
+@setvar! jaseowns_CastHarm 0
+@setvar! jaseowns_CastHarmTimerCD 40000
+@setvar! jaseowns_CastHarmMinMana 20
+
+# Fireball
+@setvar! jaseowns_CastFireball 0
+@setvar! jaseowns_CastFireballTimerCD 60000
+@setvar! jaseowns_CastFireballMinMana 20
+
+# Poison  ## Set jaseowns_CastPoisonTimerCD to 0 if you want to spam for Lethal
+@setvar! jaseowns_CastPoison 0
+@setvar! jaseowns_CastPoisonTimerCD 2000
+@setvar! jaseowns_CastPoisonMinMana 20
+
+# Lightning
+@setvar! jaseowns_CastLightning 1
+@setvar! jaseowns_CastLightningTimerCD 20000  
+@setvar! jaseowns_CastLightningMinMana 25
+
+# MindBlast
+@setvar! jaseowns_CastMindBlast 1
+@setvar! jaseowns_CastMindBlastTimerCD 0  
+@setvar! jaseowns_CastMindBlastMinMana 40
+
+# EnergyBolt
+@setvar! jaseowns_CastEnergyBolt 0
+@setvar! jaseowns_CastEnergyBoltTimerCD 0  
+@setvar! jaseowns_CastEnergyBoltMinMana 30
+
+# Explosion
+@setvar! jaseowns_CastExplosion 0
+@setvar! jaseowns_CastExplosionTimerCD 0  
+@setvar! jaseowns_CastExplosionMinMana 30
+
+# ChainLightning
+@setvar! jaseowns_CastChainLightning 0
+@setvar! jaseowns_CastChainLightningTimerCD 40000  
+@setvar! jaseowns_CastChainLightningMinMana 40
+
+# Flamestrike
+@setvar! jaseowns_CastFlamestrike 1
+@setvar! jaseowns_CastFlamestrikeTimerCD 0  
+@setvar! jaseowns_CastFlamestrikeMinMana 70
+
+# ManaVampire
+@setvar! jaseowns_CastManaVampire 0
+@setvar! jaseowns_CastManaVampireTimerCD 20000  
+@setvar! jaseowns_CastManaVampireMinMana 50
+
+# MeteorSwarm  ## revisit
+@setvar! jaseowns_CastMeteorSwarm 0
+@setvar! jaseowns_CastMeteorSwarmTimerCD 20000  
+@setvar! jaseowns_CastMeteorSwarmMinMana 50
+
+# Earthquake  ## revisit
+@setvar! jaseowns_CastEarthquake 0
+@setvar! jaseowns_CastEarthquakeTimerCD 20000  
+@setvar! jaseowns_CastEarthquakeMinMana 50
+
+###############
+###  Choose your summons
+######
+
+@setvar! jaseowns_CastToMaxFollowers 4
+
+# Earth: 0, 1, 2
+@setvar! castSummonEarthElementalCount 0
+@setvar! castSummonMummyCount 0
+
+# Fire: 0, 1, 2
+@setvar! castSummonFireElementalCount 0
+@setvar! castSummonLichCount 0
+
+# Demon: 0, 1, 2
+@setvar! castSummonDemonCount 0
+@setvar! castSummonThrallCount 1
+
+# Air: 0, 1, 2
+@setvar! castSummonAirCount 0
+@setvar! castSummonFiendCount 1
+
+# Water: 0, 1, 2
+@setvar! castSummonWaterCount 0
+@setvar! castSummonRagWitchCount 0
+
+# Creature: 0, 1, 2, 3, 4, 5
+@setvar! castSummonCreatureCount 1
+
+# Energy Vortex: 0, 1
+@setvar! castEnergyVortexCount 0
+@setvar! castJackalSpiritCount 0
+
+# Blade Spirit: 0, 1
+@setvar! castBladeSpiritCount 0
+@setvar! castSkeletalHuskCount 0
+
+# Force Poison on if we have the skill
+if skill "Poisoning" >= 80
+    @setvar! jaseowns_CastPoison 1
+endif
+
+###############
+###  Choose your spell priority preference
+######
+removelist jaseowns_SpellCastListPriorityPreference
+createlist jaseowns_SpellCastListPriorityPreference
+pushlist jaseowns_SpellCastListPriorityPreference "Poison" 
+pushlist jaseowns_SpellCastListPriorityPreference "Curse" 
+pushlist jaseowns_SpellCastListPriorityPreference "Lightning" 
+pushlist jaseowns_SpellCastListPriorityPreference "Magic Arrow" 
+pushlist jaseowns_SpellCastListPriorityPreference "Mana Drain" 
+pushlist jaseowns_SpellCastListPriorityPreference "Chain Lightning" 
+pushlist jaseowns_SpellCastListPriorityPreference "Flamestrike" 
+pushlist jaseowns_SpellCastListPriorityPreference "Harm"
+pushlist jaseowns_SpellCastListPriorityPreference "Fireball" 
+pushlist jaseowns_SpellCastListPriorityPreference "Mind Blast" 
+pushlist jaseowns_SpellCastListPriorityPreference "Energy Bolt" 
+pushlist jaseowns_SpellCastListPriorityPreference "Explosion" 
+pushlist jaseowns_SpellCastListPriorityPreference "Mana Vampire" 
+pushlist jaseowns_SpellCastListPriorityPreference "Meteor Swarm" 
+pushlist jaseowns_SpellCastListPriorityPreference "Earthquake" 
+
+if name = "Jase Nox"
+
+    @setvar! jaseowns_EatShroomiesTimerCD 120000
+    @setvar! jaseowns_CastCurse 0
+
+elseif name = "Jase Owns"
+    
+    @setvar! jaseowns_UseMeditationAutomatically 0
+    @setvar! jaseowns_UseMeditationAtManaDiff 100
+
+    # Curse
+    @setvar! jaseowns_CastCurse 0
+    @setvar! jaseowns_CastCurseMinMana 25
+
+    # ManaDrain
+    @setvar! jaseowns_CastManaDrain 0
+    @setvar! jaseowns_CastManaDrainMinMana 25
+
+    # Bless
+    @setvar! jaseowns_CastBless 1
+    @setvar! jaseowns_CastBlessMinMana 12
+
+    # Reactive Armor
+    @setvar! jaseowns_CastReactiveArmor 1
+    @setvar! jaseowns_CastReactiveArmorMinMana 12
+
+    # Arch Protection
+    @setvar! jaseowns_CastArchProtection 1
+    @setvar! jaseowns_CastArchProtectionMinMana 14
+
+    # Magic Reflection
+    @setvar! jaseowns_CastMagicReflection 1
+    @setvar! jaseowns_CastMagicReflectionMinMana 14
+
+    # Greater Healing
+    @setvar! jaseowns_HealthCheckToCastHeal 72
+    @setvar! jaseowns_CastGreaterHealMinMana 12
+    @setvar! jaseowns_CastCureMinMana 6
+
+    # Magic Arrow
+    @setvar! jaseowns_CastMagicArrow 1
+    @setvar! jaseowns_CastMagicArrowTimerCD 20000
+    @setvar! jaseowns_CastMagicArrowMinMana 20
+
+    # Harm
+    @setvar! jaseowns_CastHarm 0
+    @setvar! jaseowns_CastHarmTimerCD 40000
+    @setvar! jaseowns_CastHarmMinMana 20
+
+    # Fireball
+    @setvar! jaseowns_CastFireball 0
+    @setvar! jaseowns_CastFireballTimerCD 60000
+    @setvar! jaseowns_CastFireballMinMana 20
+
+    # Poison  ## revisit
+    @setvar! jaseowns_CastPoison 1
+    @setvar! jaseowns_CastPoisonMinMana 20
+
+    # Lightning
+    @setvar! jaseowns_CastLightning 1
+    @setvar! jaseowns_CastLightningTimerCD 20000  
+    @setvar! jaseowns_CastLightningMinMana 25
+
+    # MindBlast
+    @setvar! jaseowns_CastMindBlast 1
+    @setvar! jaseowns_CastMindBlastTimerCD 0  
+    @setvar! jaseowns_CastMindBlastMinMana 40
+
+    # EnergyBolt
+    @setvar! jaseowns_CastEnergyBolt 0
+    @setvar! jaseowns_CastEnergyBoltTimerCD 0  
+    @setvar! jaseowns_CastEnergyBoltMinMana 30
+
+    # Explosion
+    @setvar! jaseowns_CastExplosion 0
+    @setvar! jaseowns_CastExplosionTimerCD 0  
+    @setvar! jaseowns_CastExplosionMinMana 30
+
+    # ChainLightning
+    @setvar! jaseowns_CastChainLightning 0
+    @setvar! jaseowns_CastChainLightningTimerCD 40000  
+    @setvar! jaseowns_CastChainLightningMinMana 40
+
+    # Flamestrike
+    @setvar! jaseowns_CastFlamestrike 1
+    @setvar! jaseowns_CastFlamestrikeTimerCD 0  
+    @setvar! jaseowns_CastFlamestrikeMinMana 70
+
+    # ManaVampire
+    @setvar! jaseowns_CastManaVampire 0
+    @setvar! jaseowns_CastManaVampireTimerCD 20000  
+    @setvar! jaseowns_CastManaVampireMinMana 50
+
+    # MeteorSwarm  ## revisit
+    @setvar! jaseowns_CastMeteorSwarm 0
+    @setvar! jaseowns_CastMeteorSwarmTimerCD 20000  
+    @setvar! jaseowns_CastMeteorSwarmMinMana 50
+
+    # Earthquake  ## revisit
+    @setvar! jaseowns_CastEarthquake 0
+    @setvar! jaseowns_CastEarthquakeTimerCD 20000  
+    @setvar! jaseowns_CastEarthquakeMinMana 50
+
+    ###############
+    ###  Choose your summons
+    ######
+    
+    # Earth: 0, 1, 2
+    @setvar! castSummonEarthElementalCount 0
+    @setvar! castSummonMummyCount 0
+
+    # Fire: 0, 1, 2
+    @setvar! castSummonFireElementalCount 0
+    @setvar! castSummonLichCount 0
+
+    # Demon: 0, 1, 2
+    @setvar! castSummonDemonCount 0
+    @setvar! castSummonThrallCount 1
+
+    # Air: 0, 1, 2
+    @setvar! castSummonAirCount 0
+    @setvar! castSummonFiendCount 1
+
+    # Water: 0, 1, 2
+    @setvar! castSummonWaterCount 0
+    @setvar! castSummonRagWitchCount 0
+
+    # Creature: 0, 1, 2, 3, 4, 5
+    @setvar! castSummonCreatureCount 1
+
+    # Energy Vortex: 0, 1
+    @setvar! castEnergyVortexCount 0
+    @setvar! castJackalSpiritCount 0
+
+    # Blade Spirit: 0, 1
+    @setvar! castBladeSpiritCount 0
+    @setvar! castSkeletalHuskCount 0
+    
+    ###############
+    ###  Choose your spell priority preference
+    ######
+    removelist jaseowns_SpellCastListPriorityPreference
+    createlist jaseowns_SpellCastListPriorityPreference
+    pushlist jaseowns_SpellCastListPriorityPreference "Curse" 
+    pushlist jaseowns_SpellCastListPriorityPreference "Lightning" 
+    pushlist jaseowns_SpellCastListPriorityPreference "Magic Arrow" 
+    pushlist jaseowns_SpellCastListPriorityPreference "Mana Drain" 
+    pushlist jaseowns_SpellCastListPriorityPreference "Chain Lightning" 
+    pushlist jaseowns_SpellCastListPriorityPreference "Flamestrike" 
+    pushlist jaseowns_SpellCastListPriorityPreference "Harm"
+    pushlist jaseowns_SpellCastListPriorityPreference "Fireball" 
+    pushlist jaseowns_SpellCastListPriorityPreference "Poison" 
+    pushlist jaseowns_SpellCastListPriorityPreference "Mind Blast" 
+    pushlist jaseowns_SpellCastListPriorityPreference "Energy Bolt" 
+    pushlist jaseowns_SpellCastListPriorityPreference "Explosion" 
+    pushlist jaseowns_SpellCastListPriorityPreference "Mana Vampire" 
+    pushlist jaseowns_SpellCastListPriorityPreference "Meteor Swarm" 
+    pushlist jaseowns_SpellCastListPriorityPreference "Earthquake" 
+    
+endif
+
+
+
+####
+# Weapon abilities
+###
+
+if skill "Arcane" < 50
+    @setvar! jaseowns_UseAbility1 0
+    @setvar! jaseowns_UseAbility2 0
+    @setvar! jaseowns_UseAbility3 0
+else
+    @setvar! jaseowns_UseAbility1 0
+    @setvar! jaseowns_UseAbility2 1
+    @setvar! jaseowns_UseAbility3 0
+endif
+
+@setvar! jaseowns_UseAbilityTimerCD 5000
+    
+####
+# Leyline  (regen mana back)
+###
+@setvar! jaseowns_UseKeyLimePieAbilityMana 70
+
+
+##################################################################
+# 
+#   Hopefully you do not have to edit after this :)
+#       twitch.tv/jaseowns/subscribe
+#       youtube.com/jaseowns/join
+#
+##################################################################
+
+
+@setvar! jaseowns_UseSkillTimerCD 10200
+if not timerexists jaseowns_UseSkillTimer
+    settimer jaseowns_UseSkillTimer jaseowns_UseSkillTimerCD
+endif
+
+@setvar! jaseowns_CastCurseTimerCD 60000
+@setvar! jaseowns_CastManaDrainTimerCD 60000
+
+#####
+## State Variables used by the Script Logic
+###
+@setvar! jaseowns_BOT_STATE 10
+@setvar! jaseowns_BOT_STATE_PREVIOUS 0
+@setvar! jaseowns_BOT_TARGET 0
+@setvar! jaseowns_BOT_TARGET_PREVIOUS 0
+
+@setvar! jaseowns_ArmsLoreCheckTimerCD 8000
+settimer jaseowns_ArmsLoreCheckTimer jaseowns_ArmsLoreCheckTimerCD
+
+# Timers (do not touch)
+if not timerexists jaseowns_VetKitTimer
+    settimer jaseowns_VetKitTimer jaseowns_VetKitTimerCD
+endif
+if not timerexists jaseowns_EatShroomiesTimer
+    settimer jaseowns_EatShroomiesTimer jaseowns_EatShroomiesTimerCD
+endif
+if not timerexists jaseowns_CastMagicArrowTimer
+    settimer jaseowns_CastMagicArrowTimer jaseowns_CastMagicArrowTimerCD
+endif
+if not timerexists jaseowns_CastHarmTimer
+    settimer jaseowns_CastHarmTimer jaseowns_CastHarmTimerCD
+endif
+if not timerexists jaseowns_CastFireballTimer
+    settimer jaseowns_CastFireballTimer jaseowns_CastFireballTimerCD
+endif
+if not timerexists jaseowns_CastPoisonTimer
+    settimer jaseowns_CastPoisonTimer jaseowns_CastPoisonTimerCD
+endif
+if not timerexists jaseowns_CastLightningTimer
+    settimer jaseowns_CastLightningTimer jaseowns_CastLightningTimerCD
+endif
+if not timerexists jaseowns_CastMindBlastTimer
+    settimer jaseowns_CastMindBlastTimer jaseowns_CastMindBlastTimerCD
+endif
+if not timerexists jaseowns_CastEnergyBoltTimer
+    settimer jaseowns_CastEnergyBoltTimer jaseowns_CastEnergyBoltTimerCD
+endif
+if not timerexists jaseowns_CastExplosionTimer
+    settimer jaseowns_CastExplosionTimer jaseowns_CastExplosionTimerCD
+endif
+if not timerexists jaseowns_CastChainLightningTimer
+    settimer jaseowns_CastChainLightningTimer jaseowns_CastChainLightningTimerCD
+endif
+if not timerexists jaseowns_CastFlamestrikeTimer
+    settimer jaseowns_CastFlamestrikeTimer jaseowns_CastFlamestrikeTimerCD
+endif
+if not timerexists jaseowns_CastManaVampireTimer
+    settimer jaseowns_CastManaVampireTimer jaseowns_CastManaVampireTimerCD
+endif
+if not timerexists jaseowns_CastMeteorSwarmTimer
+    settimer jaseowns_CastMeteorSwarmTimer jaseowns_CastMeteorSwarmTimerCD
+endif
+if not timerexists jaseowns_CastEarthquakeTimer
+    settimer jaseowns_CastEarthquakeTimer jaseowns_CastEarthquakeTimerCD
+endif
+if not timerexists jaseowns_UseHealPotionTimer
+    settimer jaseowns_UseHealPotionTimer jaseowns_UseHealPotionTimerCD
+endif
+if not timerexists jaseowns_UseCurePotionTimer
+    settimer jaseowns_UseCurePotionTimer jaseowns_UseCurePotionTimerCD
+endif
+if not timerexists jaseowns_UseRefreshPotionTimer
+    settimer jaseowns_UseRefreshPotionTimer jaseowns_UseRefreshPotionTimerCD
+endif
+if not timerexists jaseowns_UseStrengthPotionTimer
+    settimer jaseowns_UseStrengthPotionTimer jaseowns_UseStrengthPotionTimerCD
+endif
+if not timerexists jaseowns_UseAgilityPotionTimer
+    settimer jaseowns_UseAgilityPotionTimer jaseowns_UseAgilityPotionTimerCD
+endif
+if not timerexists jaseowns_UseMagicResistPotionTimer
+    settimer jaseowns_UseMagicResistPotionTimer jaseowns_UseMagicResistPotionTimerCD
+endif
+if not timerexists jaseowns_UseMeditationMinimalAmountTimer
+    settimer jaseowns_UseMeditationMinimalAmountTimer jaseowns_UseMeditationMinimalAmountTimerCD
+endif
+
+@setvar! jaseowns_BOT_TARGET_SELECTED_TIMER_CD 5000
+if not timerexists jaseowns_BOT_TARGET_SELECTED_TIMER
+    settimer jaseowns_BOT_TARGET_SELECTED_TIMER jaseowns_BOT_TARGET_SELECTED_TIMER_CD
+endif
+
+if not timerexists jaseowns_CastReactiveArmorTimer
+    settimer jaseowns_CastReactiveArmorTimer 60000
+endif
+if not timerexists jaseowns_CastMagicReflectionTimer
+    settimer jaseowns_CastMagicReflectionTimer 60000
+endif
+
+if not timerexists jaseowns_CastArchProtectionTimer
+    settimer jaseowns_CastArchProtectionTimer 60000
+endif
+
+ 
+if not timerexists jaseowns_UseAbility1Timer
+    settimer jaseowns_UseAbility1Timer 30000
+endif
+
+if not timerexists jaseowns_UseAbility2Timer
+    settimer jaseowns_UseAbility2Timer 30000
+endif
+
+if not timerexists jaseowns_UseAbility3Timer
+    settimer jaseowns_UseAbility3Timer 30000
+endif
+
+if not timerexists jaseowns_TauntingTimer
+    settimer jaseowns_TauntingTimer jaseowns_TauntingTimerCD
+endif
+
+
+
+
+
+## NECRO TIMERS
+
+###############
+### Necro Cooldowns
+######
+if skill "Necromancy" >= 50
+
+    @setvar! jaseowns_UsedNecroAbilityTimerCD 650
+    if not timerexists jaseowns_UsedNecroAbilityTimer
+        settimer jaseowns_UsedNecroAbilityTimer jaseowns_UsedNecroAbilityTimerCD
+    endif
+
+    if not timerexists jaseowns_EvilOmenTimer
+        settimer jaseowns_EvilOmenTimer jaseowns_EvilOmenTimerCD
+    endif
+    if not timerexists jaseowns_VampiricEmbraceTimer
+        settimer jaseowns_VampiricEmbraceTimer jaseowns_VampiricEmbraceTimerCD
+    endif
+    if not timerexists jaseowns_CorpseSkinTimer
+        settimer jaseowns_CorpseSkinTimer jaseowns_CorpseSkinTimerCD
+    endif
+    if not timerexists jaseowns_MindRotTimer
+        settimer jaseowns_MindRotTimer jaseowns_MindRotTimerCD
+    endif
+    if not timerexists jaseowns_StrangleTimer
+        settimer jaseowns_StrangleTimer jaseowns_StrangleTimerCD
+    endif
+    if not timerexists jaseowns_BloodOathTimer
+        settimer jaseowns_BloodOathTimer jaseowns_BloodOathTimerCD
+    endif
+    if not timerexists jaseowns_PainSpikeTimer
+        settimer jaseowns_PainSpikeTimer jaseowns_PainSpikeTimerCD
+    endif
+    if not timerexists jaseowns_PoisonStrikeTimer
+        settimer jaseowns_PoisonStrikeTimer jaseowns_PoisonStrikeTimerCD
+    endif
+endif
+    
+if not timerexists jaseowns_WitherTimer
+    settimer jaseowns_WitherTimer jaseowns_WitherTimerCD
+endif
+    
+if not timerexists jaseowns_VengefulSpiritTimer
+    settimer jaseowns_VengefulSpiritTimer jaseowns_VengefulSpiritTimerCD
+endif
+
+if not listexists jaseowns_CastedCrusedList
+    createlist jaseowns_CastedCrusedList
+endif
+
+if not listexists jaseowns_CastedPoisonList
+    createlist jaseowns_CastedPoisonList
+endif
+
+if not listexists jaseowns_CastedManaDrainList
+    createlist jaseowns_CastedManaDrainList
+endif
+
+if jaseowns_UseMeditationAutomatically = 1 and skill "Meditation" = 0
+    @setvar! jaseowns_UseMeditationAutomatically 0
+endif
+
+############
+### UNUSED FOR NOW
+@setvar! jaseowns_UseItemTimerCD 500
+settimer jaseowns_UseItemTimer jaseowns_UseItemTimerCD
+@setvar! jaseowns_MyOtherPet 0x577A4A
+@setvar! jaseowns_MyOtherOtherPet 0x475F01
+####################
+
+
+@clearignore 
+clearsysmsg 
+
+if name = "DorrianX"
+    warmode on
+endif
+
+@setvar! jaseowns_SKIP_LAST_TARGET 0
+
+if not varexist lastHpCheck
+    @setvar! lastHpCheck 100
+endif
+
+if skill "Veterinary" < 50
+    @setvar! jaseowns_UseVetKits 0
+endif
+
+if skill "Parry" < 80
+    @setvar! jaseowns_AutoTaunting 0
+endif
+
+#####
+### Herding
+if not varexist myAwesomeCrookThatIsActivated
+    @setvar! myAwesomeCrookThatIsActivated 0
+endif
+if not find myAwesomeCrookThatIsActivated self
+    if skill "Herding" > 0 and findtype 3713 self as firstJrook
+        @setvar! isHerdingActive 0
+        while isHerdingActive = 0
+            if counttype 3713 self > 1
+                @clearignore 
+                while findtype 3713 self as jrook
+                    getlabel jrook multiDesc
+                    if 'activated' in multiDesc
+                        @setvar! isHerdingActive jrook
+                        break
+                    endif
+                    @ignore jrook
+                endwhile
+                @clearignore 
+                if isHerdingActive = 0
+                    dclick firstJrook
+                endif
+            endif
+            
+            if isHerdingActive = 0
+                getlabel firstJrook desc
+                if 'activated' in desc
+                    @setvar! isHerdingActive firstJrook
+                else
+                    dclick firstJrook
+                    getlabel firstJrook desc
+                    @setvar! isHerdingActive firstJrook
+                endif 
+            endif
+        endwhile
+        @setvar! myAwesomeCrookThatIsActivated isHerdingActive
+    endif
+endif
+
+# Reset all the scoped bot stuff each time the script starts
+removelist jaseowns_IGNORE_CREATURES
+createlist jaseowns_IGNORE_CREATURES
+
+@setvar! jaseowns_BOT_TARGET_PREVIOUS 0
+@setvar! jaseowns_BOT_TARGET 0
+@setvar! jaseowns_USER_LAST_TARGET 0
+
+@setvar! jaseowns_SUMMONER_MAYBE 0
+
+if skill "Magery" >= 50 and skill "Animal Taming" < 50 and skill "Spirit Speak" >= 50
+    // we are maybe a summoner bro
+    @setvar! jaseowns_SUMMONER_MAYBE 1
+
+    # Reset the pets
+    if dead jaseowns_EarthPetOne or not find jaseowns_EarthPetOne ground -1 -1 18
+        @setvar! jaseowns_EarthPetOne 0
+    endif
+    if dead jaseowns_EarthPetTwo or not find jaseowns_EarthPetTwo ground -1 -1 18
+        @setvar! jaseowns_EarthPetTwo 0
+    endif
+    if dead jaseowns_FirePetOne or not find jaseowns_FirePetOne ground -1 -1 18
+        @setvar! jaseowns_FirePetOne 0
+    endif
+    if dead jaseowns_FirePetTwo or not find jaseowns_FirePetTwo ground -1 -1 18
+        @setvar! jaseowns_FirePetTwo 0
+    endif
+    if dead jaseowns_DemonPetOne or not find jaseowns_DemonPetOne ground -1 -1 18
+        @setvar! jaseowns_DemonPetOne 0
+    endif
+    if dead jaseowns_DemonPetTwo or not find jaseowns_DemonPetTwo ground -1 -1 18
+        @setvar! jaseowns_DemonPetTwo 0
+    endif
+    if dead jaseowns_WaterPetOne or not find jaseowns_WaterPetOne ground -1 -1 18
+        @setvar! jaseowns_WaterPetOne 0
+    endif
+    if dead jaseowns_WaterPetTwo or not find jaseowns_WaterPetTwo ground -1 -1 18
+        @setvar! jaseowns_WaterPetTwo 0
+    endif
+    if dead jaseowns_AirPetOne or not find jaseowns_AirPetOne ground -1 -1 18
+        @setvar! jaseowns_AirPetOne 0
+    endif
+    if dead jaseowns_AirPetTwo or not find jaseowns_AirPetTwo ground -1 -1 18
+        @setvar! jaseowns_AirPetTwo 0
+    endif
+    if dead jaseowns_SummonCreaturePetOne or not find jaseowns_SummonCreaturePetOne ground -1 -1 18
+        @setvar! jaseowns_SummonCreaturePetOne 0
+    endif
+    if dead jaseowns_EvPetOne or not find jaseowns_EvPetOne ground -1 -1 18
+        @setvar! jaseowns_EvPetOne 0
+    endif
+    if dead jaseowns_BsPetOne or not find jaseowns_BsPetOne ground -1 -1 18
+        @setvar! jaseowns_BsPetOne 0
+    endif
+endif
+
+ ### TOOD: jase
+## when a user has less than 5 followers, calculate if we need to summon.. 
+## maybe we dont
+## 
+###
+
+@setvar! jaseowns_BOT_BARD_STATE 0
+
+@setvar! jaseowns_BOT_BARD_PEACED 1
+@setvar! jaseowns_BOT_BARD_DISCORDED 1
+
+if skill "Peacemaking" >= 50
+    @setvar! jaseowns_BOT_BARD_STATE 1
+    @setvar! jaseowns_BOT_BARD_PEACED 0
+endif
+
+if skill "Discordance" >= 50 
+    @setvar! jaseowns_BOT_BARD_STATE 1
+    @setvar! jaseowns_BOT_BARD_DISCORDED 0
+endif
+
+@setvar! jaseowns_HoldingHealForSomeReason 0
+
+
+@setvar! jaseowns_ArcaneStaffWeapon 0
+
+if findlayer self lefthand as jaseowns_LeftHand
+    @setvar! jaseowns_ArcaneStaffWeapon jaseowns_LeftHand  
+endif
+
+if jaseowns_EatShroomiesTimerCD = 60000
+    @setvar! jaseowns_EatShroomiesTimerCD 65000
+elseif jaseowns_EatShroomiesTimerCD = 120000
+    @setvar! jaseowns_EatShroomiesTimerCD 125000
+elseif jaseowns_EatShroomiesTimerCD = 240000
+    @setvar! jaseowns_EatShroomiesTimerCD 245000
+endif
+
+settimer jaseowns_WarnMeAtThisDiffWeightTimer jaseowns_WarnMeAtThisDiffWeightTimerCD
+
+// loop shit inside here
+while not dead
+
+    if hidden and jaseowns_AutoStopScriptIfHidden = 1
+        overhead "We hiding, so we stopped the script!"
+        sysmsg "We hiding, so we stopped the script!"
+        warmode off
+        stop
+    endif
+
+    if timer jaseowns_WarnMeAtThisDiffWeightTimer >= jaseowns_WarnMeAtThisDiffWeightTimerCD
+        if diffweight <= jaseowns_WarnMeAtThisDiffWeight or weight >= maxweight 
+            overhead "WARN: {{jaseowns_WarnMeAtThisDiffWeight}} reached! Drop weight" 34
+            settimer jaseowns_WarnMeAtThisDiffWeightTimer 0
+        endif
+    endif
+    
+    if counttype 3847 backpack 0 < jaseowns_CurePotCountInBackpack
+        if findtype 3854 backpack 0 and findtype 6464 backpack 44 as jaseowns_Keg
+            dclick jaseowns_Keg
+            wait 200
+        endif
+    endif
+    
+    if counttype 3852 backpack 0 < jaseowns_HealthPotCountInBackpack
+        if findtype 3854 backpack 0 and findtype 6464 backpack 253 as jaseowns_Keg
+            dclick jaseowns_Keg
+            wait 200
+        endif
+    endif
+
+    if weight >= maxweight and not findbuff "strength" and jaseowns_AutomaticallyDrinkStrPotIfOverWeight = 1 and findtype "white potion" backpack as jaseowns_Pot
+        dclick jaseowns_Pot
+        wait 200
+    endif
+
+    if followers < jaseowns_CastToMaxFollowers and jaseowns_SUMMONER_MAYBE = 1
+        if jaseowns_DEBUG_MODE = 1
+            sysmsg "Summon pets!"
+        endif
+        @setvar! jaseowns_BOT_STATE 15
+    endif
+    
+    # Eat food if we got it
+    if not findbuff "food" and findtype "tray" backpack as jaseowns_FoodBuff
+        dclick jaseowns_FoodBuff
+        getlabel backpack jaseowns_PingCheck
+    endif
+    
+    
+    
+    # TODO: come back this
+    if timer jaseowns_BOT_TARGET_SELECTED_TIMER >= jaseowns_BOT_TARGET_SELECTED_TIMER_CD and not dead jaseowns_BOT_TARGET
+        if jaseowns_BOT_STATE = 50
+            // do nothing (we medding)
+        elseif inlist jaseowns_IGNORE_CREATURES jaseowns_BOT_TARGET
+            // do nothing again
+        else
+            if jaseowns_DEBUG_MODE = 1
+                overhead "we have the same target"
+            endif
+            @setvar! jaseowns_BOT_STATE 30
+        endif
+        settimer jaseowns_BOT_TARGET_SELECTED_TIMER 0
+    endif 
+
+    if not queued and jaseowns_UseSkinningKnifeAutomatically = 1 and findtype 11552 backpack as jaseowns_SkinningKnife
+        if findbuff "Actively Meditating"
+            //do nothing
+        elseif findtype 8198 ground -1 -1 2 as jorpse
+            while not targetexists 
+                dclick jaseowns_SkinningKnife
+                wft 500
+            endwhile
+            while targetexists 
+                hotkey "Target Self"
+                getlabel backpack jaseowns_PingCheck
+            endwhile
+            @ignore jorpse
+        endif
+    endif
+
+
+### Paralyze check
+
+    if jaseowns_UseRedPouchAutomatically = 1 and paralyzed and findtype "pouch" backpack 38 as item
+        dclick item
+        getlabel backpack jaseowns_PingCheck
+    endif
+    
+    
+    
+### POTIONS
+
+    if jaseowns_UseCurePotion = 1 and timer jaseowns_UseCurePotionTimer >= jaseowns_UseCurePotionTimerCD
+        if poisoned and diffhits >= jaseowns_UseCurePotionAtHealthDiff and findtype 3847 backpack 0 as jaseowns_UseItem
+            getlabel jaseowns_UseItem desc
+            if "next" in desc
+                // wait 
+            else
+                dclick jaseowns_UseItem
+                getlabel jaseowns_UseItem desc
+                cooldown "Cure Potion" jaseowns_UseCurePotionTimerCD
+                settimer jaseowns_UseCurePotionTimer 0
+            endif
+        elseif not findtype 3847 backpack 0
+            @setvar! jaseowns_UseCurePotionOnlyInsteadOfCureSpell 0
+        endif
+    endif
+
+    if jaseowns_UseHealPotion = 1 and timer jaseowns_UseHealPotionTimer >= jaseowns_UseHealPotionTimerCD
+        if diffhits >= jaseowns_UseHealPotionAtHealthDiff and findtype 3852 backpack 0 as jaseowns_UseItem
+            getlabel jaseowns_UseItem desc
+            if "next" in desc
+                // wait 
+            else
+                dclick jaseowns_UseItem
+                getlabel jaseowns_UseItem desc
+                if "next" in desc
+                    cooldown "Heal Potion" jaseowns_UseHealPotionTimerCD
+                    settimer jaseowns_UseHealPotionTimer 0
+                endif
+            endif
+        endif
+    endif
+
+    if jaseowns_UseRefreshPotion = 1 and timer jaseowns_UseRefreshPotionTimer >= jaseowns_UseRefreshPotionTimerCD
+        if diffstam >= jaseowns_UseRefreshPotionAtStamDiff and findtype 3851 backpack 0 as jaseowns_UseItem
+            if counttype 3851 backpack 0 as jaseowns_CurrentPotCountTotal
+                @setvar! jaseowns_CurrentPotCount jaseowns_CurrentPotCountTotal
+            endif
+            dclick jaseowns_UseItem
+            getlabel jaseowns_UseItem desc
+            if counttype 3851 backpack 0 as jaseowns_CurrentPotCountTotal
+                if jaseowns_CurrentPotCountTotal != jaseowns_CurrentPotCount
+                    cooldown "Refresh Potion" jaseowns_UseRefreshPotionTimerCD
+                    settimer jaseowns_UseRefreshPotionTimer 0            
+                endif
+            endif
+        endif
+    endif
+
+    if jaseowns_UseStrengthPotion = 1 and timer jaseowns_UseStrengthPotionTimer >= jaseowns_UseStrengthPotionTimerCD
+        if jaseowns_UseStrengthPotionOnlyInWarMode = 1 and not warmode
+            // do nothing
+        else
+            if str <= jaseowns_UseStrengthPotionAtStrOrLess and findtype 3849 backpack 0 as jaseowns_UseItem
+                if counttype 3849 backpack 0 as jaseowns_CurrentPotCountTotal
+                    @setvar! jaseowns_CurrentPotCount jaseowns_CurrentPotCountTotal
+                endif
+                dclick jaseowns_UseItem
+                getlabel jaseowns_UseItem desc
+                if counttype 3849 backpack 0 as jaseowns_CurrentPotCountTotal
+                    if jaseowns_CurrentPotCountTotal != jaseowns_CurrentPotCount
+                        cooldown "Strength Potion" jaseowns_UseStrengthPotionTimerCD
+                        settimer jaseowns_UseStrengthPotionTimer 0            
+                    endif
+                endif
+            endif
+        endif
+    endif
+
+    if jaseowns_UseAgilityPotion = 1 and timer jaseowns_UseAgilityPotionTimer >= jaseowns_UseAgilityPotionTimerCD
+        if jaseowns_UseAgilityPotionOnlyInWarMode = 1 and not warmode
+            // do nothing
+        else
+            if dex <= jaseowns_UseAgilityPotionAtDexOrLess and findtype 3848 backpack 0 as jaseowns_UseItem
+                if counttype 3848 backpack 0 as jaseowns_CurrentPotCountTotal
+                    @setvar! jaseowns_CurrentPotCount jaseowns_CurrentPotCountTotal
+                endif
+                dclick jaseowns_UseItem
+                getlabel jaseowns_UseItem desc
+                if counttype 3848 backpack 0 as jaseowns_CurrentPotCountTotal
+                    if jaseowns_CurrentPotCountTotal != jaseowns_CurrentPotCount
+                        cooldown "Agility Potion" jaseowns_UseAgilityPotionTimerCD
+                        settimer jaseowns_UseAgilityPotionTimer 0            
+                    endif
+                endif
+            endif
+        endif
+    endif
+
+    if jaseowns_UseMagicResistPotion = 1 and timer jaseowns_UseMagicResistPotionTimer >= jaseowns_UseMagicResistPotionTimerCD
+        if jaseowns_UseMagicResistPotionOnlyInWarMode = 1 and not warmode
+            // do nothing
+        elseif jaseowns_UseMagicResistPotionOnlyIfMissingMagicReflection = 1 and findbuff "Magic"
+            // do nothing
+        elseif findtype 3846 backpack 0 as jaseowns_UseItem
+            if counttype 3846 backpack 0 as jaseowns_CurrentPotCountTotal
+                @setvar! jaseowns_CurrentPotCount jaseowns_CurrentPotCountTotal
+            endif
+            dclick jaseowns_UseItem
+            getlabel jaseowns_UseItem desc
+            if counttype 3846 backpack 0 as jaseowns_CurrentPotCountTotal
+                if jaseowns_CurrentPotCountTotal != jaseowns_CurrentPotCount
+                    cooldown "MagicResist Potion" jaseowns_UseMagicResistPotionTimerCD
+                    settimer jaseowns_UseMagicResistPotionTimer 0            
+                endif
+            endif
+        endif
+    endif
+
+    #####
+    ## TARGETING
+    ###
+    
+    if insysmsg "Target a new 'Last Target'"
+        overhead "Set your target"
+        while targetexists 
+            wait 50
+        endwhile
+    endif
+
+    
+     
+    @setvar! jaseowns_USER_LAST_TARGET lasttarget
+    @setvar! jaseowns_USER_LAST_TARGET_FRIENDLY 0
+    if inlist jaseowns_IGNORE_CREATURES jaseowns_BOT_TARGET
+        if jaseowns_DEBUG_MODE = 1
+            sysmsg "Ignoring due to something something" 88
+        endif
+    
+    elseif jaseowns_BOT_TARGET != 0 and jaseowns_USER_LAST_TARGET != jaseowns_BOT_TARGET and find jaseowns_USER_LAST_TARGET ground -1 -1 12 and not dead jaseowns_USER_LAST_TARGET
+        if jaseowns_DEBUG_MODE = 1
+            sysmsg "{{jaseowns_USER_LAST_TARGET}} {{jaseowns_BOT_TARGET}}"
+        endif
+        if noto jaseowns_USER_LAST_TARGET = "friend" or noto jaseowns_USER_LAST_TARGET = "innocent" or noto jaseowns_USER_LAST_TARGET = "invulnerable"
+            @setvar! jaseowns_USER_LAST_TARGET_FRIENDLY 1
+            if jaseowns_DEBUG_MODE = 1
+                sysmsg "friendly"
+            endif
+            @setvar! jaseowns_SKIP_LAST_TARGET jaseowns_USER_LAST_TARGET
+            // do nothing
+        elseif noto jaseowns_USER_LAST_TARGET = "murderer" or noto jaseowns_USER_LAST_TARGET = "enemy"
+            @setvar! jaseowns_SKIP_LAST_TARGET jaseowns_USER_LAST_TARGET
+            if jaseowns_DEBUG_MODE = 1
+                sysmsg "murderer"
+            endif
+            // do nothing they are mean players
+        elseif noto jaseowns_USER_LAST_TARGET = "hostile" or noto jaseowns_USER_LAST_TARGET = "criminal"
+            if jaseowns_DEBUG_MODE = 1
+                overhead "We are switching the target"
+            endif
+            @setvar! jaseowns_BOT_TARGET_PREVIOUS jaseowns_BOT_TARGET
+            @setvar! jaseowns_BOT_TARGET lasttarget
+            @setvar! jaseowns_BOT_STATE 25
+        elseif jaseowns_DEBUG_MODE = 1
+            sysmsg "unknown"
+        endif
+    elseif find jaseowns_USER_LAST_TARGET
+       
+     #if find jaseowns_USER_LAST_TARGET backpack
+#            @setvar! jaseowns_USER_LAST_TARGET 0
+#            @setvar! jaseowns_USER_LAST_TARGET_FRIENDLY 1
+#        else
+        if noto jaseowns_USER_LAST_TARGET = "friend" or noto jaseowns_USER_LAST_TARGET = "innocent" or noto jaseowns_USER_LAST_TARGET = "invulnerable"
+            @setvar! jaseowns_USER_LAST_TARGET_FRIENDLY 1
+        endif
+    endif
+    
+    removelist jaseowns_SpellCastListHelper
+    createlist jaseowns_SpellCastListHelper
+
+    if poisoned and jaseowns_UseCurePotionOnlyInsteadOfCureSpell = 0
+        if mana >= jaseowns_CastCureMinMana
+            pushlist jaseowns_SpellCastListHelper "Cure" 
+        endif
+    elseif hp <= jaseowns_HealthCheckToCastHeal
+       // or findbuff "bleed" or findbuff "disease"
+        if mana >= jaseowns_CastGreaterHealMinMana
+            @setvar! jaseowns_HoldingHealForSomeReason 1
+            pushlist jaseowns_SpellCastListHelper "Greater Heal" 
+        endif
+    else
+        @setvar! jaseowns_HoldingHealForSomeReason 0
+    endif
+
+    if list jaseowns_SpellCastListHelper = 1
+        if targetexists "harmful"
+            if jaseowns_DEBUG_MODE = 1
+                overhead "Canceling due to harmful during heal"
+            endif
+            hotkey "Cancel Current Target"
+            getlabel backpack jaseowns_PingCheck
+        endif
+        settimer jaseowns_SpellCastTimerHelper 0
+        while not targetexists "beneficial"
+            foreach jaseowns_SpellCast in jaseowns_SpellCastListHelper
+                cast jaseowns_SpellCast
+            endfor
+            getlabel backpack jaseowns_PingCheck
+            if timer jaseowns_SpellCastTimerHelper >= 3000
+                break
+            elseif poisoned
+                // wait
+            elseif hp > jaseowns_HealthCheckToCastHeal 
+                hotkey "> Interrupt"
+                getlabel backpack jaseowns_PingCheck
+                break
+            endif
+        endwhile
+        if hp <= jaseowns_HealthCheckToCastHeal or poisoned
+            if targetexists "beneficial"
+                hotkey "Target Self"
+            endif
+        elseif targetexists
+            hotkey "Cancel Current Target"
+        endif
+    endif
+
+    while targetexists and jaseowns_HoldingHealForSomeReason = 0
+        sysmsg "Waiting for your target cursor"
+        wait 100
+    endwhile
+
+    if jaseowns_UseVetKits = 1 and not bandaging and findtype 25750 backpack as item
+        if hp < maxhp or timer jaseowns_VetKitTimer >= jaseowns_VetKitTimerCD
+            @setvar! jaseowns_BOT_UseAKit 1
+            if findbuff "Actively Meditating" and diffhits < jaseowns_OkayToCancelMeditateAtHealthCheckDiff
+                @setvar! jaseowns_BOT_UseAKit 0
+            endif
+            if jaseowns_BOT_UseAKit = 1
+                dclick item   
+                cooldown "Use Vet Supply" jaseowns_VetKitTimerCD
+                settimer jaseowns_VetKitTimer 0
+            endif
+        endif
+    endif
+    
+    if jaseowns_UseMeditationAutomatically = 1 and not findbuff "Actively Meditating" and diffmana >= jaseowns_UseMeditationAtManaDiff
+    
+        if timer jaseowns_UseSkillTimer >= jaseowns_UseSkillTimerCD 
+            if cooldown "Moving"
+                overhead "Stop moving to meditiate"
+            else
+                if jaseowns_UseVetKits = 1 and not bandaging and findtype 25750 backpack as item
+                    dclick item
+                    cooldown "Use Vet Supply" jaseowns_VetKitTimerCD
+                    settimer jaseowns_VetKitTimer 0
+                    getlabel backpack jaseowns_PingCheck
+                endif
+                if jaseowns_UseAllGuardBeforeMed = 1 and followers > 0
+                    say "all guard" 89
+                    getlabel backpack jaseowns_PingCheck
+                endif
+                useskill "meditation"
+                getlabel backpack jaseowns_PingCheck
+                settimer jaseowns_UseSkillTimer 0                
+            endif
+        endif
+        if findbuff "Actively Meditating"
+            cooldown "Waiting on Meditation" jaseowns_UseMeditationMinimalAmountTimerCD
+            settimer jaseowns_UseMeditationMinimalAmountTimer 0
+            @setvar! jaseowns_BOT_STATE 50
+        endif
+    endif
+    
+    if insysmsg "You may now use another magic mushroom."
+       settimer jaseowns_EatShroomiesTimer jaseowns_EatShroomiesTimerCD
+    endif
+    
+    # Eat a mushroom
+    if jaseowns_EatShroomies = 1 and not queued and not findbuff "Actively Meditating" and timer jaseowns_EatShroomiesTimer >= jaseowns_EatShroomiesTimerCD and diffmana >= jaseowns_EatShroomiesAtDiffMana and findtype 29012 backpack 2963 as item
+        clearsysmsg 
+        dclick item
+        getlabel backpack jaseowns_PingCheck
+        if insysmsg "You are already at your maximum mana."
+            // do nothing
+        elseif insysmsg "You consume a magic mushroom and restore some mana."
+            settimer jaseowns_EatShroomiesTimer 0
+        else
+            getlabel backpack jaseowns_PingCheck
+            if insysmsg "You consume a magic mushroom and restore some mana."
+                settimer jaseowns_EatShroomiesTimer 0
+            else
+                settimer jaseowns_EatShroomiesTimer 55000
+            endif
+        endif
+    endif
+    
+    
+    #####
+    ##  50 : Med Break
+    ##  45 : Necro spells
+    ##  40 : Spell Casting
+    ##  35 : Bard abilities
+    ##  30 : All Kill jaseowns_BOT_TARGET
+    ##  25 : Arms Lore Sight Check
+    ##  20 : Warmode : Scan for target (Target Closest Grey Monster)
+    ##  20 : Peace : all follow me
+    ##  15 : Peace / War : Summon Followers
+    ##  11 : Create Mushrooms
+    ##  10 : Warmode : Guard jaseowns_MyMainTamerPet
+    ##  10 : Peace : nothing
+    ##  999 : nothing
+    ####
+    
+    if skill "Arcane" >= 50 and not gumpexists 3954121934
+        say "[abilitieshotbar"
+        waitforgump 3954121934 1000
+    endif
+
+#    if not gumpexists 2016719803
+#        say "[codexhotbar"
+#        waitforgump 2016719803 1000
+#    endif
+    
+    
+    ###
+    #  Manage Bard State
+    ###
+    if jaseowns_BOT_BARD_STATE = 1
+        if jaseowns_BOT_STATE = 40
+            if jaseowns_BOT_BARD_PEACED = 0 or jaseowns_BOT_BARD_DISCORDED = 0
+                @setvar! jaseowns_BOT_STATE 35
+            endif
+        endif
+    endif
+    
+    if jaseowns_BOT_STATE = 50
+        // meditation break
+        if timer jaseowns_UseMeditationMinimalAmountTimer >= jaseowns_UseMeditationMinimalAmountTimerCD
+            @setvar! jaseowns_BOT_STATE 40
+        elseif not findbuff "Actively Meditating"
+            @setvar! jaseowns_BOT_STATE 40
+        endif
+    elseif jaseowns_BOT_STATE = 40
+    
+        if find jaseowns_ArcaneStaffWeapon backpack
+            dclick jaseowns_ArcaneStaffWeapon
+            wait 650
+        endif    
+    
+        if cooldown "Moving" > jaseowns_AvoidCastingWhileMovingCD
+            if jaseowns_DEBUG_MODE = 1
+                sysmsg "Stop moving to cast" 89
+            endif
+        elseif jaseowns_BOT_SELF = jaseowns_BOT_TARGET
+            @setvar! jaseowns_SKIP_LAST_TARGET self
+            if jaseowns_DEBUG_MODE = 1
+                overhead "SPELLS: dont attack urself bro" 34    
+            endif
+            @setvar! jaseowns_BOT_STATE 10
+        elseif jaseowns_USER_LAST_TARGET_FRIENDLY = 1
+            // skip processing a friendly
+            if jaseowns_DEBUG_MODE = 1
+                sysmsg "skip processing a friendly"
+            endif
+        elseif not warmode 
+           @setvar! jaseowns_BOT_STATE 20
+        elseif dead jaseowns_BOT_TARGET
+           @setvar! jaseowns_BOT_STATE 10
+        elseif jaseowns_HoldingHealForSomeReason = 0
+            
+            // necro mancy
+            if skill "Necromancy" >= 50
+                if not gumpexists 622436516 
+                    say '[NecromancyHotbar'
+                    getlabel backpack jaseowns_PingCheck
+                endif
+                if gumpexists 622436516
+                    if ingump "21/" 622436516
+                        @setvar! necroSymbols 21
+                    elseif ingump "20/" 622436516
+                        @setvar! necroSymbols 20
+                    elseif ingump "19/" 622436516
+                        @setvar! necroSymbols 19
+                    elseif ingump "18/" 622436516
+                        @setvar! necroSymbols 18
+                    elseif ingump "17/" 622436516
+                        @setvar! necroSymbols 17
+                    elseif ingump "16/" 622436516
+                        @setvar! necroSymbols 16
+                    elseif ingump "15/" 622436516
+                        @setvar! necroSymbols 15
+                    elseif ingump "14/" 622436516
+                        @setvar! necroSymbols 14
+                    elseif ingump "13/" 622436516
+                        @setvar! necroSymbols 13
+                    elseif ingump "12/" 622436516
+                        @setvar! necroSymbols 12
+                    elseif ingump "11/" 622436516
+                        @setvar! necroSymbols 11
+                    elseif ingump "10/" 622436516
+                        @setvar! necroSymbols 10
+                    elseif ingump "9/" 622436516
+                        @setvar! necroSymbols 9
+                    elseif ingump "8/" 622436516
+                        @setvar! necroSymbols 8
+                    elseif ingump "7/" 622436516
+                        @setvar! necroSymbols 7
+                    elseif ingump "6/" 622436516
+                        @setvar! necroSymbols 6
+                    elseif ingump "5/" 622436516
+                        @setvar! necroSymbols 5
+                    elseif ingump "4/" 622436516
+                        @setvar! necroSymbols 4
+                    elseif ingump "3/" 622436516
+                        @setvar! necroSymbols 3
+                    elseif ingump "2/" 622436516
+                        @setvar! necroSymbols 2
+                    elseif ingump "1/" 622436516
+                        @setvar! necroSymbols 1
+                    elseif ingump "0/" 622436516
+                        @setvar! necroSymbols 0
+                    endif
+                endif
+                    
+                
+                @setvar! jaseowns_CastPoisonStrikeOnlyWhenLethal 1
+                
+                ## add necro shit here
+                if jaseowns_CastPoison = 1 and jaseowns_CastPoisonStrike = 1 and timer jaseowns_PoisonStrikeTimer >= jaseowns_PoisonStrikeTimerCD and skill "Necromancy" >= 55 and 1 < necroSymbols and timer jaseowns_UsedNecroAbilityTimer >= jaseowns_UsedNecroAbilityTimerCD
+                    getlabel jaseowns_BOT_TARGET jaseowns_PoisonCheck
+                    if "Ticks" in jaseowns_PoisonCheck
+                        #if "[11 " in jaseowns_PoisonCheck or "[10 " in jaseowns_PoisonCheck or "[9 " in jaseowns_PoisonCheck or "[8 " in jaseowns_PoisonCheck or "[7 " in jaseowns_PoisonCheck or "[6 " in jaseowns_PoisonCheck  or "[5 " in jaseowns_PoisonCheck  or "[4 " in jaseowns_PoisonCheck
+                        if "[9 " in jaseowns_PoisonCheck or "[8 " in jaseowns_PoisonCheck or "[7 " in jaseowns_PoisonCheck or "[6 " in jaseowns_PoisonCheck  or "[5 " in jaseowns_PoisonCheck  or "[4 " in jaseowns_PoisonCheck
+                            @setvar! jaseowns_FirePoisonCheck 1
+                            if jaseowns_CastPoisonStrikeOnlyWhenLethal = 1 
+                                if "Lethal" in jaseowns_PoisonCheck
+                                 // do nothing
+                                else
+                                    @setvar! jaseowns_FirePoisonCheck 0
+                                endif
+                            endif
+                            if jaseowns_FirePoisonCheck = 1
+                                gumpresponse 11 622436516
+                                wft 500
+                                if targetexists 
+                                    target jaseowns_BOT_TARGET
+                                    getlabel backpack jaseowns_PingCheck
+                                    if not targetexists 
+                                        if insysmsg "Target cannot be seen" or insysmsg "That is too far away."
+                                            overhead " < Not able to target > " 34 jaseowns_BOT_TARGET
+                                        elseif insysmsg "Unholy symbols remaining"
+                                            settimer jaseowns_PoisonStrikeTimer 0
+                                            settimer jaseowns_UsedNecroAbilityTimer 0
+                                        endif
+                                    endif
+                                endif
+                            endif
+                        endif
+#                   else
+#                        clearlist jaseowns_CastedPoisonList jaseowns_BOT_TARGET
+                    endif
+                endif
+                
+                # TODO: make sure we are casting this at the right time
+                if jaseowns_CastEvilOmen = 1 and timer jaseowns_EvilOmenTimer >= jaseowns_EvilOmenTimerCD and skill "Necromancy" >= 60 and 2 < necroSymbols and timer jaseowns_UsedNecroAbilityTimer >= jaseowns_UsedNecroAbilityTimerCD
+                    clearsysmsg 
+                    gumpresponse 12 622436516
+                    getlabel backpack jaseowns_PingCheck
+                    if insysmsg "Unholy symbols remaining"
+                        settimer jaseowns_EvilOmenTimer 0
+                        settimer jaseowns_UsedNecroAbilityTimer 0
+                        cooldown EvilOmen jaseowns_EvilOmenTimerCD
+                    endif
+                endif
+                
+                # TODO: make sure we are casting this at the right time
+                if jaseowns_CastCorpseSkin = 1 and timer jaseowns_CorpseSkinTimer >= jaseowns_CorpseSkinTimerCD and skill "Necromancy" >= 65 and 2 < necroSymbols and timer jaseowns_UsedNecroAbilityTimer >= jaseowns_UsedNecroAbilityTimerCD
+                    clearsysmsg 
+                    gumpresponse 13 622436516
+                    getlabel backpack jaseowns_PingCheck
+                    if insysmsg "Unholy symbols remaining"
+                        settimer jaseowns_CorpseSkinTimer 0
+                        settimer jaseowns_UsedNecroAbilityTimer 0
+                        cooldown CorpseSkin jaseowns_CorpseSkinTimerCD
+                    endif
+                endif
+                
+                # TODO: make sure we are casting this at the right time
+                if jaseowns_CastVampiricEmbrace = 1 and timer jaseowns_VampiricEmbraceTimer >= jaseowns_VampiricEmbraceTimerCD and skill "Necromancy" >= 70 and 3 < necroSymbols and timer jaseowns_UsedNecroAbilityTimer >= jaseowns_UsedNecroAbilityTimerCD and findtype 8198 ground -1 -1 8 as jorpse
+                    clearsysmsg 
+                    gumpresponse 14 622436516
+                    wft 500
+                    if targetexists 
+                        hotkey "Target Self"
+                        getlabel backpack jaseowns_PingCheck
+                        if not targetexists 
+                            if insysmsg "Unholy symbols remaining"
+                                settimer jaseowns_VampiricEmbraceTimer 0
+                                settimer jaseowns_UsedNecroAbilityTimer 0
+                                cooldown VampiricEmbrace jaseowns_VampiricEmbraceTimerCD
+                            elseif insysmsg "You do not see any corpses near that location"
+                                settimer jaseowns_VampiricEmbraceTimer 25000
+                                settimer jaseowns_UsedNecroAbilityTimer 0
+                                cooldown VampiricEmbrace 5000
+                            elseif insysmsg "None of your followers currently require healing"
+                                settimer jaseowns_VampiricEmbraceTimer 25000
+                                settimer jaseowns_UsedNecroAbilityTimer 0
+                                cooldown VampiricEmbrace 5000
+                            endif
+                        endif
+                    endif
+                endif
+                
+                if jaseowns_CastMindRot = 1 and timer jaseowns_MindRotTimer >= jaseowns_MindRotTimerCD and skill "Necromancy" >= 75 and 3 < necroSymbols and timer jaseowns_UsedNecroAbilityTimer >= jaseowns_UsedNecroAbilityTimerCD
+                    clearsysmsg 
+                    gumpresponse 15 622436516
+                    getlabel backpack jaseowns_PingCheck
+                    if insysmsg "Unholy symbols remaining"
+                        settimer jaseowns_MindRotTimer 0
+                        settimer jaseowns_UsedNecroAbilityTimer 0
+                        cooldown MindRot jaseowns_MindRotTimerCD
+                    endif
+                endif
+                
+                if jaseowns_CastBloodOath = 1 and timer jaseowns_BloodOathTimer >= jaseowns_BloodOathTimerCD and skill "Necromancy" >= 80 and 4 < necroSymbols and timer jaseowns_UsedNecroAbilityTimer >= jaseowns_UsedNecroAbilityTimerCD and followers > 0
+                    clearsysmsg 
+                    gumpresponse 16 622436516
+                    getlabel backpack jaseowns_PingCheck
+                    if insysmsg "Unholy symbols remaining"
+                        settimer jaseowns_BloodOathTimer 0
+                        settimer jaseowns_UsedNecroAbilityTimer 0
+                        cooldown BloodOath jaseowns_BloodOathTimerCD
+                    endif
+                endif
+                
+                if jaseowns_CastStrangle = 1 and timer jaseowns_StrangleTimer >= jaseowns_StrangleTimerCD and skill "Necromancy" >= 85 and 4 < necroSymbols and timer jaseowns_UsedNecroAbilityTimer >= jaseowns_UsedNecroAbilityTimerCD
+                    clearsysmsg 
+                    gumpresponse 17 622436516
+                    getlabel backpack jaseowns_PingCheck
+                    if insysmsg "Unholy symbols remaining"
+                        settimer jaseowns_StrangleTimer 0
+                        settimer jaseowns_UsedNecroAbilityTimer 0
+                        cooldown Strangle jaseowns_StrangleTimerCD
+                    endif
+                endif
+                
+                if not timerexists jaseowns_WeCastedSuccessfullyTimer
+                    // wait
+                elseif timer jaseowns_WeCastedSuccessfullyTimer >= 2000
+                    if jaseowns_CastPainSpike = 1 and timer jaseowns_PainSpikeTimer >= jaseowns_PainSpikeTimerCD and skill "Necromancy" >= 95 and 5 < necroSymbols and timer jaseowns_UsedNecroAbilityTimer >= jaseowns_UsedNecroAbilityTimerCD and findtype 8198 ground -1 -1 8 as jorpse
+                        clearsysmsg 
+                        gumpresponse 19 622436516
+                        wft 500
+                        if targetexists 
+                            target jaseowns_BOT_TARGET
+                            getlabel backpack jaseowns_PingCheck
+                            if not targetexists 
+                                if insysmsg "Target cannot be seen" or insysmsg "That is too far away."
+                                    overhead " < Not able to target > " 34 jaseowns_BOT_TARGET
+                                elseif insysmsg "Unholy symbols remaining"
+                                    settimer jaseowns_PainSpikeTimer 0
+                                    settimer jaseowns_UsedNecroAbilityTimer 0
+                                    cooldown PainSpike jaseowns_PainSpikeTimerCD
+                                endif
+                            endif
+                        endif
+                    endif
+                endif
+            endif
+            
+            #### then cast
+        
+            removelist jaseowns_SpellCastListHelper
+            createlist jaseowns_SpellCastListHelper
+            @setvar! jaseowns_SpellCastTimerCD 5000
+            
+                    
+            removelist jaseowns_DebugSpellCastListHelper
+            createlist jaseowns_DebugSpellCastListHelper
+            
+            if not listexists jaseowns_OverheadHelperList
+                createlist jaseowns_OverheadHelperList
+            endif
+
+            foreach jaseowns_SpellCastListPreferenceIndex in jaseowns_SpellCastListPriorityPreference
+                if jaseowns_SpellCastListPreferenceIndex = "Lightning" and jaseowns_CastLightning = 1 and timer jaseowns_CastLightningTimer >= jaseowns_CastLightningTimerCD and mana >= jaseowns_CastLightningMinMana
+                    pushlist jaseowns_SpellCastListHelper "Lightning" 
+                    break
+                elseif jaseowns_SpellCastListPreferenceIndex = "Mana Drain" and jaseowns_CastManaDrain = 1 and mana >= jaseowns_CastManaDrainMinMana and not inlist jaseowns_CastedManaDrainList jaseowns_BOT_TARGET
+                    pushlist jaseowns_SpellCastListHelper "Mana Drain" 
+                    break
+                elseif jaseowns_SpellCastListPreferenceIndex = "Curse" and jaseowns_CastCurse = 1 and mana >= jaseowns_CastCurseMinMana and not inlist jaseowns_CastedCrusedList jaseowns_BOT_TARGET
+                    pushlist jaseowns_SpellCastListHelper "Curse" 
+                    break
+                elseif jaseowns_SpellCastListPreferenceIndex = "Flamestrike" and jaseowns_CastFlamestrike = 1 and timer jaseowns_CastFlamestrikeTimer >= jaseowns_CastFlamestrikeTimerCD and mana >= jaseowns_CastFlamestrikeMinMana
+                    pushlist jaseowns_SpellCastListHelper "Flamestrike" 
+                    break
+                elseif jaseowns_SpellCastListPreferenceIndex = "Magic Arrow" and jaseowns_CastMagicArrow = 1 and timer jaseowns_CastMagicArrowTimer >= jaseowns_CastMagicArrowTimerCD and mana >= jaseowns_CastMagicArrowMinMana
+                    pushlist jaseowns_SpellCastListHelper "Magic Arrow" 
+                    break
+                elseif jaseowns_SpellCastListPreferenceIndex = "Harm" and jaseowns_CastHarm = 1 and timer jaseowns_CastHarmTimer >= jaseowns_CastHarmTimerCD and mana >= jaseowns_CastHarmMinMana
+                    pushlist jaseowns_SpellCastListHelper "Harm"
+                    break
+                elseif jaseowns_SpellCastListPreferenceIndex = "Fireball" and jaseowns_CastFireball = 1 and timer jaseowns_CastFireballTimer >= jaseowns_CastFireballTimerCD and mana >= jaseowns_CastFireballMinMana
+                    pushlist jaseowns_SpellCastListHelper "Fireball" 
+                    break
+                elseif jaseowns_SpellCastListPreferenceIndex = "Poison" and jaseowns_CastPoison = 1 and mana >= jaseowns_CastPoisonMinMana
+                    if timer jaseowns_CastPoisonTimer >= jaseowns_CastPoisonTimerCD
+                        if not inlist jaseowns_CastedPoisonList jaseowns_BOT_TARGET                
+                            pushlist jaseowns_SpellCastListHelper "Poison" 
+                            getlabel jaseowns_BOT_TARGET jaseowns_PoisonDescReCheck
+                            if "Ticks" in jaseowns_PoisonDescReCheck
+                                if not inlist jaseowns_OverheadHelperList jaseowns_PoisonDescReCheck
+                                    overhead "Label: {{jaseowns_PoisonDescReCheck}}" 89 jaseowns_BOT_TARGET
+                                    pushlist jaseowns_OverheadHelperList jaseowns_PoisonDescReCheck
+                                endif
+                            endif
+                            break
+                        else
+                            getlabel jaseowns_BOT_TARGET jaseowns_PoisonDescReCheck
+                            if "Ticks" in jaseowns_PoisonDescReCheck
+                                settimer jaseowns_POISON_CAST_TIMER 0
+                                if not inlist jaseowns_OverheadHelperList jaseowns_PoisonDescReCheck
+                                    overhead "Label: {{jaseowns_PoisonDescReCheck}}" 89 jaseowns_BOT_TARGET
+                                    pushlist jaseowns_OverheadHelperList jaseowns_PoisonDescReCheck
+                                endif
+                            else
+                                getlabel jaseowns_BOT_TARGET jaseowns_PoisonDescReCheck2
+                                if "Ticks" in jaseowns_PoisonDescReCheck2
+                                    if not inlist jaseowns_OverheadHelperList jaseowns_PoisonDescReCheck2
+                                        overhead "Label: {{jaseowns_PoisonDescReCheck2}}" 89 jaseowns_BOT_TARGET
+                                        pushlist jaseowns_OverheadHelperList jaseowns_PoisonDescReCheck2
+                                     endif
+                                else
+                                    clearlist jaseowns_CastedPoisonList         
+                                endif
+                            endif
+                        endif
+                    endif
+                    
+                elseif jaseowns_SpellCastListPreferenceIndex = "Mind Blast" and jaseowns_CastMindBlast = 1 and timer jaseowns_CastMindBlastTimer >= jaseowns_CastMindBlastTimerCD and mana >= jaseowns_CastMindBlastMinMana
+                    pushlist jaseowns_SpellCastListHelper "Mind Blast" 
+                    break
+                elseif jaseowns_SpellCastListPreferenceIndex = "Energy Bolt" and jaseowns_CastEnergyBolt = 1 and timer jaseowns_CastEnergyBoltTimer >= jaseowns_CastEnergyBoltTimerCD and mana >= jaseowns_CastEnergyBoltMinMana
+                    pushlist jaseowns_SpellCastListHelper "Energy Bolt" 
+                    break
+                elseif jaseowns_SpellCastListPreferenceIndex = "Explosion" and jaseowns_CastExplosion = 1 and timer jaseowns_CastExplosionTimer >= jaseowns_CastExplosionTimerCD and mana >= jaseowns_CastExplosionMinMana
+                    pushlist jaseowns_SpellCastListHelper "Explosion" 
+                    break
+                elseif jaseowns_SpellCastListPreferenceIndex = "Chain Lightning" and jaseowns_CastChainLightning = 1 and timer jaseowns_CastChainLightningTimer >= jaseowns_CastChainLightningTimerCD and mana >= jaseowns_CastChainLightningMinMana
+                    pushlist jaseowns_SpellCastListHelper "Chain Lightning" 
+                    break
+                elseif jaseowns_SpellCastListPreferenceIndex = "Mana Vampire" and jaseowns_CastManaVampire = 1 and timer jaseowns_CastManaVampireTimer >= jaseowns_CastManaVampireTimerCD and mana >= jaseowns_CastManaVampireMinMana
+                    pushlist jaseowns_SpellCastListHelper "Mana Vampire" 
+                    break
+                elseif jaseowns_SpellCastListPreferenceIndex = "Meteor Swarm" and jaseowns_CastMeteorSwarm = 1 and timer jaseowns_CastMeteorSwarmTimer >= jaseowns_CastMeteorSwarmTimerCD and mana >= jaseowns_CastMeteorSwarmMinMana
+                    pushlist jaseowns_SpellCastListHelper "Meteor Swarm" 
+                    break
+                elseif jaseowns_SpellCastListPreferenceIndex = "Earthquake" and jaseowns_CastEarthquake = 1 and timer jaseowns_CastEarthquakeTimer >= jaseowns_CastEarthquakeTimerCD and mana >= jaseowns_CastEarthquakeMinMana
+                    pushlist jaseowns_SpellCastListHelper "Earthquake" 
+                    break
+                endif
+                
+                if inlist jaseowns_DebugSpellCastListHelper jaseowns_SpellCastListPreferenceIndex
+                    break
+                else
+                    pushlist jaseowns_DebugSpellCastListHelper jaseowns_SpellCastListPreferenceIndex
+                endif
+            endfor
+
+            # todo fix this !
+            @setvar! jaseowns_SpellSuccess 0
+
+            if list jaseowns_SpellCastListHelper = 1
+                
+                if jaseowns_AutoTaunting = 1 and find jaseowns_BOT_TARGET ground -1 -1 10
+                    if not cooldown "Taunting" and timer jaseowns_TauntingTimer >= jaseowns_TauntingTimerCD
+                        say "[Taunt"
+                        wft 500
+                        if targetexists 
+                            target jaseowns_BOT_TARGET
+                            getlabel backpack jaseowns_PingCheck
+                            if not targetexists 
+                                if insysmsg "Cannot be seen"
+                                    // do nothing
+                                else
+                                    cooldown "Taunting" jaseowns_TauntingTimerCD
+                                    settimer jaseowns_TauntingTimer 0
+                                endif
+                            endif
+                        endif
+                    endif
+                endif
+            
+                if jaseowns_UseAbility1 = 1 and timer jaseowns_UseAbility1Timer >= jaseowns_UseAbilityTimerCD
+                    say "[WeaponAbility1"
+                    getlabel backpack jaseowns_PingCheck 
+                    if insysmsg "You do cannot perform that ability yet."
+                        settimer jaseowns_UseAbility1Timer 0
+                    elseif insysmsg "You have not yet unlocked that weapon ability."
+                        @setvar! jaseowns_UseAbility1 0
+                    else
+                        settimer jaseowns_UseAbility1Timer 0 
+                    endif
+                endif 
+            
+                if jaseowns_UseAbility2 = 1 and timer jaseowns_UseAbility2Timer >= jaseowns_UseAbilityTimerCD and mana <= jaseowns_UseKeyLimePieAbilityMana
+                    say "[WeaponAbility2"
+                    getlabel backpack jaseowns_PingCheck 
+                    if insysmsg "You do cannot perform that ability yet."
+                        settimer jaseowns_UseAbility2Timer 0
+                    elseif insysmsg "You have not yet unlocked that weapon ability."
+                        @setvar! jaseowns_UseAbility2 0
+                    else
+                        settimer jaseowns_UseAbility2Timer 0 
+                    endif
+                endif   
+                
+                if jaseowns_UseAbility3 = 1 and timer jaseowns_UseAbility3Timer >= jaseowns_UseAbilityTimerCD
+                    say "[WeaponAbility3"
+                    getlabel backpack jaseowns_PingCheck 
+                    if insysmsg "You do cannot perform that ability yet."
+                        settimer jaseowns_UseAbility3Timer 0
+                    elseif insysmsg "You have not yet unlocked that weapon ability."
+                        @setvar! jaseowns_UseAbility3 0
+                    else
+                        settimer jaseowns_UseAbility3Timer 0 
+                    endif
+                endif   
+            
+                # Eat a mushroom
+                if jaseowns_EatShroomies = 1 and not queued and timer jaseowns_EatShroomiesTimer >= jaseowns_EatShroomiesTimerCD and diffmana >= jaseowns_EatShroomiesAtDiffMana and findtype 29012 backpack 2963 as item
+                    clearsysmsg 
+                    dclick item
+                    getlabel backpack jaseowns_PingCheck
+                    if insysmsg "You are already at your maximum mana."
+                        // do nothing
+                    elseif insysmsg "You consume a magic mushroom and restore some mana."
+                        settimer jaseowns_EatShroomiesTimer 0
+                    else
+                        getlabel backpack jaseowns_PingCheck
+                        if insysmsg "You consume a magic mushroom and restore some mana."
+                            settimer jaseowns_EatShroomiesTimer 0
+                        else
+                            settimer jaseowns_EatShroomiesTimer 55000
+                        endif
+                    endif
+                endif
+                
+                if targetexists 
+                    if jaseowns_DEBUG_MODE = 1
+                        overhead "Canceling during harmful spell cast.. any"
+                    endif
+                    hotkey "Cancel Current Target"
+                endif
+                settimer jaseowns_SpellCastTargetTimer 0
+                if not targetexists "harmful" and not dead jaseowns_BOT_TARGET
+                    foreach jaseowns_SpellCast in jaseowns_SpellCastListHelper
+                        cast jaseowns_SpellCast
+                    endfor
+                    clearsysmsg
+                    @setvar! jaseowns_ResetBotTargetToNewTarget 0
+                    while timer jaseowns_SpellCastTargetTimer <= jaseowns_SpellCastTimerCD
+                        getlabel backpack jaseowns_PingCheck
+                    
+                        if insysmsg "Target a new 'Last Target'"
+                            overhead "Set your new target"
+                            while targetexists 
+                                wait 50
+                            endwhile
+                        endif  
+                        
+                        if jaseowns_RetargetWhileCasting = 1 and insysmsg "New target set"
+                            @setvar! jaseowns_ResetBotTargetToNewTarget 1
+                        elseif jaseowns_RetargetWhileCasting = 1 and insysmsg "Last Target set"
+                            @setvar! jaseowns_ResetBotTargetToNewTarget 1
+                        endif
+                        
+                        if jaseowns_ResetBotTargetToNewTarget = 1
+                            
+                            settimer jaseowns_TargetNextButInRangeTimer 0
+                            @setvar! jaseowns_BOT_CYCLE_TARGET_HELPER 0
+                            while timer jaseowns_TargetNextButInRangeTimer < 2000
+                                
+                                @setvar! jaseowns_USER_LAST_TARGET lasttarget
+                                @setvar! jaseowns_USER_LAST_TARGET_FRIENDLY 0
+                                
+                                overhead "Scanning.." 89 jaseowns_USER_LAST_TARGET
+ 
+                                if jaseowns_USER_LAST_TARGET = jaseowns_BOT_TARGET
+                                    sysmsg "They are equal buddy"
+                                    if jaseowns_BOT_CYCLE_TARGET_HELPER = 0
+                                        @setvar! jaseowns_BOT_CYCLE_TARGET_HELPER jaseowns_BOT_TARGET
+                                    else
+                                        sysmsg "There was no more mobs" 34
+                                        sysmsg "There was no more mobs" 34
+                                        sysmsg "There was no more mobs" 34
+                                        settimer jaseowns_TargetNextButInRangeTimer 3000
+                                        break
+                                    endif
+                                endif
+
+                                if inlist jaseowns_IGNORE_CREATURES jaseowns_USER_LAST_TARGET
+                                    if jaseowns_DEBUG_MODE = 1
+                                        sysmsg "Ignoring due to something something" 88
+                                    endif
+                                elseif jaseowns_BOT_TARGET != 0 and jaseowns_USER_LAST_TARGET != jaseowns_BOT_TARGET and find jaseowns_USER_LAST_TARGET ground -1 -1 12 and not dead jaseowns_USER_LAST_TARGET
+                                    if jaseowns_DEBUG_MODE = 1
+                                        sysmsg "{{jaseowns_USER_LAST_TARGET}} {{jaseowns_BOT_TARGET}}"
+                                    endif
+                                    if noto jaseowns_USER_LAST_TARGET = "friend" or noto jaseowns_USER_LAST_TARGET = "innocent" or noto jaseowns_USER_LAST_TARGET = "invulnerable"
+                                        @setvar! jaseowns_USER_LAST_TARGET_FRIENDLY 1
+                                        if jaseowns_DEBUG_MODE = 1
+                                            sysmsg "friendly"
+                                        endif
+                                        @setvar! jaseowns_SKIP_LAST_TARGET jaseowns_USER_LAST_TARGET
+                                        // do nothing
+                                    elseif noto jaseowns_USER_LAST_TARGET = "murderer" or noto jaseowns_USER_LAST_TARGET = "enemy"
+                                        @setvar! jaseowns_SKIP_LAST_TARGET jaseowns_USER_LAST_TARGET
+                                        if jaseowns_DEBUG_MODE = 1
+                                            sysmsg "murderer"
+                                        endif
+                                        // do nothing they are mean players
+                                    elseif noto jaseowns_USER_LAST_TARGET = "hostile" or noto jaseowns_USER_LAST_TARGET = "criminal"
+
+                                        if find jaseowns_USER_LAST_TARGET ground -1 -1 12
+                                            overhead "WE SHOULD BE HERE BRO" 89
+                                            sysmsg "WE SHOULD BE HERE BRO" 89
+                                            if jaseowns_DEBUG_MODE = 1
+                                                overhead "We are switching the target"
+                                            endif
+                                            @setvar! jaseowns_BOT_TARGET_PREVIOUS jaseowns_BOT_TARGET
+                                            @setvar! jaseowns_BOT_TARGET lasttarget
+                                            settimer jaseowns_TargetNextButInRangeTimer 3000
+                                            break
+                                        endif
+                                    elseif jaseowns_DEBUG_MODE = 1
+                                        sysmsg "unknown"
+                                        break
+                                    endif
+                                endif
+                                
+                                hotkey "Next Monster Target"                                
+                                getlabel backpack jaseowns_PingCheck
+                            endwhile
+                            
+                            @setvar! jaseowns_ResetBotTargetToNewTarget 0
+                            clearsysmsg 
+                        
+                        endif
+                    
+                        // wait
+                        if insysmsg "Your concentration is disturbed, thus ruining thy spell." or insysmsg "You have not yet recovered from casting a spell." or insysmsg "cannot cast a spell while"
+                            #or insysmsg "off your feet"
+                            break
+                        elseif targetexists
+                            if jaseowns_DEBUG_MODE = 1
+                                overhead "Spell ready: {{jaseowns_SpellCastTargetTimer}}"
+                            endif
+                            break
+                        elseif dead jaseowns_BOT_TARGET
+                            if timerexists jaseowns_BOT_TARGET_IS_INVIS_MOB
+                                // do nothing
+                            else
+                                hotkey "> Interrupt"    
+                            endif
+                        elseif hp <= jaseowns_HpCheckToInterruptCastIfLessThan
+                            hotkey "> Interrupt"
+                        elseif not warmode
+                            hotkey "> Interrupt"
+                            if skill "Arcane" >= 80
+                                attack jaseowns_BOT_TARGET
+                            endif
+                        elseif hp <= jaseowns_HpCheckToDrinkPotionCastIfLessThan
+                            if jaseowns_UseHealPotion = 1 and timer jaseowns_UseHealPotionTimer >= jaseowns_UseHealPotionTimerCD
+                                if findtype 3852 backpack 0 as jaseowns_UseItem
+                                    getlabel jaseowns_UseItem desc
+                                    if "next" in desc
+                                        // wait 
+                                    else
+                                        dclick jaseowns_UseItem
+                                        getlabel jaseowns_UseItem desc
+                                        if "next" in desc
+                                            cooldown "Heal Potion" jaseowns_UseHealPotionTimerCD
+                                            settimer jaseowns_UseHealPotionTimer 0
+                                        endif
+                                    endif
+                                endif
+                            endif
+                        endif
+                    endwhile
+                endif
+                if dead jaseowns_BOT_TARGET and targetexists 
+                    if timerexists jaseowns_BOT_TARGET_IS_INVIS_MOB
+                        settimer jaseowns_BOT_INVIS_MOB_TIMER 0
+                        @setvar! jaseowns_BOT_INVIS_MOB_TIMER_CD 2500
+                        while timer jaseowns_BOT_INVIS_MOB_TIMER <= jaseowns_BOT_INVIS_MOB_TIMER_CD
+                            overhead "Waiting for mob to appear"
+                            if not dead jaseowns_BOT_TARGET
+                                break
+                            endif
+                        endwhile
+                        removetimer jaseowns_BOT_INVIS_MOB_TIMER
+                        if dead jaseowns_BOT_TARGET
+                            removetimer jaseowns_BOT_TARGET_IS_INVIS_MOB
+                        endif
+                    else
+                        if jaseowns_DEBUG_MODE = 1 
+                            overhead "It died while we casted"
+                        endif
+                        hotkey "Cancel Current Target"                        
+                    endif
+                endif
+                getlabel backpack jaseowns_PingCheck
+                if targetexists "harmful"
+                    target jaseowns_BOT_TARGET
+                    getlabel backpack jaseowns_PingCheck
+                    if insysmsg "Target cannot be seen" or insysmsg "That is too far away."
+                        overhead " < Not able to target > " 34 jaseowns_BOT_TARGET
+                        @setvar! jaseowns_BOT_STATE 10
+                    elseif targetexists 
+                        overhead "Canceling during harmful spell cast.. any after the fact"
+                        hotkey "Cancel Current Target"
+                    else
+                        if not timerexists jaseowns_WeCastedSuccessfullyTimer
+                            settimer jaseowns_WeCastedSuccessfullyTimer 0
+                        endif
+                        @setvar! jaseowns_SpellSuccess 1
+                    endif
+                    if targetexists "harmful"
+                        if jaseowns_DEBUG_MODE = 1
+                            overhead "Canceling during harmful spell cast.. any after the fact 2"
+                        endif
+                        hotkey "Cancel Current Target"
+                    endif
+                elseif targetexists "neutral" and inlist jaseowns_SpellCastListHelper "Chain Lightning"
+                    target jaseowns_BOT_TARGET
+                    getlabel backpack jaseowns_PingCheck
+                    if insysmsg "Target cannot be seen" or insysmsg "That is too far away."
+                        overhead " < Not able to target > " 34 jaseowns_BOT_TARGET
+                        @setvar! jaseowns_BOT_STATE 10
+                    elseif targetexists 
+                        overhead "Canceling during harmful spell cast.. any after the fact"
+                        hotkey "Cancel Current Target"
+                    else
+                        if not timerexists jaseowns_WeCastedSuccessfullyTimer
+                            settimer jaseowns_WeCastedSuccessfullyTimer 0
+                        endif
+                        @setvar! jaseowns_SpellSuccess 1
+                    endif
+                    if targetexists "neutral"
+                        if jaseowns_DEBUG_MODE = 1
+                            overhead "Canceling during harmful spell cast.. any after the fact 2"
+                        endif
+                        hotkey "Cancel Current Target"
+                    endif
+                endif
+            endif
+
+            if jaseowns_SpellSuccess = 1
+                if jaseowns_DEBUG_MODE = 1
+                    overhead "Spell Successful: {{jaseowns_SpellCastTargetTimer}}" 14
+                    sysmsg "Spell Successful: {{jaseowns_SpellCastTargetTimer}}" 14
+                endif
+                if inlist jaseowns_SpellCastListHelper "Curse"
+                    cooldown Curse jaseowns_CastCurseTimerCD
+                    settimer jaseowns_CastCurseTimer 0
+                    pushlist jaseowns_CastedCrusedList jaseowns_BOT_TARGET
+                elseif inlist jaseowns_SpellCastListHelper "Mana Drain"
+                    cooldown ManaDrain jaseowns_CastManaDrainTimerCD
+                    settimer jaseowns_CastManaDrainTimer 0
+                    pushlist jaseowns_CastedManaDrainList jaseowns_BOT_TARGET
+                elseif inlist jaseowns_SpellCastListHelper "Magic Arrow"
+                    cooldown MagicArrow jaseowns_CastMagicArrowTimerCD
+                    settimer jaseowns_CastMagicArrowTimer 0
+                elseif inlist jaseowns_SpellCastListHelper "Harm"
+                    cooldown Harm jaseowns_CastHarmTimerCD
+                    settimer jaseowns_CastHarmTimer 0
+                elseif inlist jaseowns_SpellCastListHelper "Fireball"
+                    cooldown Fireball jaseowns_CastFireballTimerCD
+                    settimer jaseowns_CastFireballTimer 0
+                elseif inlist jaseowns_SpellCastListHelper "Poison"
+                    settimer jaseowns_CastPoisonTimer 0
+                    getlabel jaseowns_BOT_TARGET jaseowns_CheckLeathPoisonDesc
+                    if "Lethal" in jaseowns_CheckLeathPoisonDesc
+                        pushlist jaseowns_CastedPoisonList jaseowns_BOT_TARGET
+                    elseif skill "Poisoning" >= 100 and skill "Magery" >= 100
+                        if findtype "Green Potion" backpack as jaseowns_Pot
+                            getlabel jaseowns_Pot jaseowns_PotDesc
+                            if "lethal" in jaseowns_PotDesc
+                                // continue
+                            else
+                                pushlist jaseowns_CastedPoisonList jaseowns_BOT_TARGET
+                            endif
+                        else
+                            pushlist jaseowns_CastedPoisonList jaseowns_BOT_TARGET
+                        endif
+                    else
+                        pushlist jaseowns_CastedPoisonList jaseowns_BOT_TARGET
+                    endif
+                elseif inlist jaseowns_SpellCastListHelper "Lightning"
+                    cooldown Lightning jaseowns_CastLightningTimerCD
+                    settimer jaseowns_CastLightningTimer 0
+                elseif inlist jaseowns_SpellCastListHelper "Mind Blast"
+                    cooldown MindBlast jaseowns_CastMindBlastTimerCD
+                    settimer jaseowns_CastMindBlastTimer 0
+                elseif inlist jaseowns_SpellCastListHelper "Energy Bolt"
+                    cooldown EnergyBolt jaseowns_CastEnergyBoltTimerCD
+                    settimer jaseowns_CastEnergyBoltTimer 0
+                elseif inlist jaseowns_SpellCastListHelper "Explosion"
+                    cooldown Explosion jaseowns_CastExplosionTimerCD
+                    settimer jaseowns_CastExplosionTimer 0
+                elseif inlist jaseowns_SpellCastListHelper "Chain Lightning"
+                    cooldown "Chain Lightning" jaseowns_CastChainLightningTimerCD
+                    settimer jaseowns_CastChainLightningTimer 0
+                elseif inlist jaseowns_SpellCastListHelper "Flamestrike"
+                    cooldown Flamestrike jaseowns_CastFlamestrikeTimerCD
+                    settimer jaseowns_CastFlamestrikeTimer 0
+                elseif inlist jaseowns_SpellCastListHelper "Mana Vampire"
+                    cooldown ManaVampire jaseowns_CastManaVampireTimerCD
+                    settimer jaseowns_CastManaVampireTimer 0
+                elseif inlist jaseowns_SpellCastListHelper "Meteor Swarm"
+                    cooldown MeteorSwarm jaseowns_CastMeteorSwarmTimerCD
+                    settimer jaseowns_CastMeteorSwarmTimer 0
+                elseif inlist jaseowns_SpellCastListHelper "Earthquake"
+                    cooldown Earthquake jaseowns_CastEarthquakeTimerCD
+                    settimer jaseowns_CastEarthquakeTimer 0
+                endif
+            endif
+        else
+            sysmsg "We think we are holding a spell?" 34
+        endif
+
+    elseif jaseowns_BOT_STATE = 35
+        
+        if skill "Peacemaking" >= 50
+            @setvar! jaseowns_BOT_BARD_PEACED 0
+            if not findbuff "song of peacemaking" and timer jaseowns_UseSkillTimer >= 11000
+                useskill 'Peacemaking'
+                wft 500
+                if insysmsg "What instrument"
+                    if findtype 3740|3742|3762|3763|10245|20006|20008|20010|20012|20014|20016 backpack as jaseowns_BardInstrument
+                        target jaseowns_BardInstrument
+                    else
+                        overhead "I do not have an inny" 34
+                        @setvar! jaseowns_BOT_BARD_PEACED 1
+                    endif
+                    wft 500
+                endif
+                target backpack
+                settimer jaseowns_UseSkillTimer 0
+            endif  
+        else
+            @setvar! jaseowns_BOT_BARD_PEACED 1    
+        endif
+
+        if skill "Discordance" >= 50 
+            @setvar! jaseowns_BOT_BARD_DISCORDED 0
+            if not findbuff "song of discordance" and timer jaseowns_UseSkillTimer >= 11000
+                useskill 'Discordance'
+                wft 500
+                if insysmsg "What instrument"
+                    if findtype 3740|3742|3762|3763|10245|20006|20008|20010|20012|20014|20016 backpack as jaseowns_BardInstrument
+                        target jaseowns_BardInstrument
+                    else
+                        overhead "I do not have an inny" 34
+                        @setvar! jaseowns_BOT_BARD_DISCORDED 1
+                    endif
+                    wft 500
+                endif
+                target backpack
+                settimer jaseowns_UseSkillTimer 0
+            endif 
+        else
+            @setvar! jaseowns_BOT_BARD_DISCORDED 1
+        endif
+
+        if skill "Provocation" >= 50 
+            @setvar! jaseowns_BOT_BARD_PROVOED 0
+            if not findbuff "song of provocation" and timer jaseowns_UseSkillTimer >= 11000
+                useskill 'Provocation'
+                wft 500
+                if insysmsg "What instrument"
+                    if findtype 3740|3742|3762|3763|10245|20006|20008|20010|20012|20014|20016 backpack as jaseowns_BardInstrument
+                        target jaseowns_BardInstrument
+                    else
+                        overhead "I do not have an inny" 34
+                        @setvar! jaseowns_BOT_BARD_PROVOED 1
+                    endif
+                    wft 500
+                endif
+                target backpack
+                settimer jaseowns_UseSkillTimer 0
+            endif 
+        else
+            @setvar! jaseowns_BOT_BARD_PROVOED 1
+        endif
+    
+        if warmode and find jaseowns_BOT_TARGET ground -1 -1 10
+            if jaseowns_BOT_BARD_PEACED = 0
+                getlabel jaseowns_BOT_TARGET jaseowns_BardDesc
+                if "discord" in jaseowns_BardDesc
+                    @setvar! jaseowns_BOT_BARD_DISCORDED 1
+                endif
+                if "pacified" in jaseowns_BardDesc
+                    @setvar! jaseowns_BOT_BARD_PEACED 1
+                elseif timer jaseowns_UseSkillTimer >= 11000 
+                    useskill 'Peacemaking'
+                    wft 500
+                    if insysmsg "What instrument"
+                        if findtype 3740|3742|3762|3763|10245|20006|20008|20010|20012|20014|20016 backpack as jaseowns_BardInstrument
+                            target jaseowns_BardInstrument
+                        else
+                            overhead "I do not have an inny" 34
+                            @setvar! jaseowns_BOT_BARD_PEACED 1
+                        endif
+                        wft 500
+                    endif
+                    if targetexists 
+                        target jaseowns_BOT_TARGET
+                        overhead "-- ATTEMPT PEACE --" 89 jaseowns_BOT_TARGET
+                    endif
+                    settimer jaseowns_UseSkillTimer 5000
+                endif
+            endif
+
+            if jaseowns_BOT_BARD_DISCORDED = 0
+                getlabel jaseowns_BOT_TARGET jaseowns_BardDesc
+                if "pacified" in jaseowns_BardDesc
+                    @setvar! jaseowns_BOT_BARD_PEACED 1
+                endif
+                if "discord" in jaseowns_BardDesc
+                    @setvar! jaseowns_BOT_BARD_DISCORDED 1
+                elseif timer jaseowns_UseSkillTimer >= 11000 
+                    useskill 'Discordance'
+                    wft 500
+                    if insysmsg "What instrument"
+                        if findtype 3740|3742|3762|3763|10245|20006|20008|20010|20012|20014|20016 backpack as jaseowns_BardInstrument
+                            target jaseowns_BardInstrument
+                        else
+                            overhead "I do not have an inny" 34
+                            @setvar! jaseowns_BOT_BARD_DISCORDED 1
+                        endif
+                        wft 500
+                    endif
+                    if targetexists 
+                        target jaseowns_BOT_TARGET
+                        overhead "-- ATTEMPT DISCORD --" 89 jaseowns_BOT_TARGET
+                    endif
+                    settimer jaseowns_UseSkillTimer 5000
+                endif
+            endif
+        endif
+        
+        // we will cast spells here and shit
+        // waiting for target to die
+        if dead jaseowns_BOT_TARGET
+            @setvar! jaseowns_BOT_STATE 10
+        elseif jaseowns_BOT_BARD_PEACED = 1 and jaseowns_BOT_BARD_DISCORDED  = 1
+            if warmode
+                @setvar! jaseowns_BOT_STATE 40
+            endif
+        endif
+    elseif jaseowns_BOT_STATE = 30
+        
+        if jaseowns_BOT_SELF = jaseowns_BOT_TARGET
+            @setvar! jaseowns_SKIP_LAST_TARGET self
+            if jaseowns_DEBUG_MODE = 1
+                overhead "dont attack urself bro" 34    
+            endif
+            @setvar! jaseowns_BOT_STATE 10
+        elseif jaseowns_USER_LAST_TARGET_FRIENDLY = 1
+            // skip processing a friendly
+            if jaseowns_DEBUG_MODE = 1
+                sysmsg "skip processing a friendly"
+            endif
+            @setvar! jaseowns_BOT_STATE 10
+        elseif followers > 0
+            // Fighting.. but we want to guard first
+        
+            if find jaseowns_EarthPetOne ground -1 -1 18 as jaseowns_MenuSelection
+                overhead "Guarding" 89 jaseowns_MenuSelection
+                menu jaseowns_MenuSelection 3
+                getlabel backpack jaseowns_PingCheck
+            endif
+            if find jaseowns_EarthPetTwo ground -1 -1 18 as jaseowns_MenuSelection
+                overhead "Guarding" 89 jaseowns_MenuSelection
+                menu jaseowns_MenuSelection 3
+                getlabel backpack jaseowns_PingCheck
+            endif
+            if find jaseowns_FirePetOne ground -1 -1 18 as jaseowns_MenuSelection
+                overhead "Guarding" 89 jaseowns_MenuSelection
+                menu jaseowns_MenuSelection 3
+                getlabel backpack jaseowns_PingCheck
+            endif
+            if find jaseowns_FirePetTwo ground -1 -1 18 as jaseowns_MenuSelection
+                overhead "Guarding" 89 jaseowns_MenuSelection
+                menu jaseowns_MenuSelection 3
+                getlabel backpack jaseowns_PingCheck
+            endif
+            if find jaseowns_DemonPetOne ground -1 -1 18 as jaseowns_MenuSelection
+                overhead "Guarding" 89 jaseowns_MenuSelection
+                menu jaseowns_MenuSelection 3
+                getlabel backpack jaseowns_PingCheck
+            endif
+            if find jaseowns_DemonPetTwo ground -1 -1 18 as jaseowns_MenuSelection
+                overhead "Guarding" 89 jaseowns_MenuSelection
+                menu jaseowns_MenuSelection 3
+                getlabel backpack jaseowns_PingCheck
+            endif
+            if find jaseowns_WaterPetOne ground -1 -1 18 as jaseowns_MenuSelection
+                overhead "Guarding" 89 jaseowns_MenuSelection
+                menu jaseowns_MenuSelection 3
+                getlabel backpack jaseowns_PingCheck
+            endif
+            if find jaseowns_WaterPetTwo ground -1 -1 18 as jaseowns_MenuSelection
+                overhead "Guarding" 89 jaseowns_MenuSelection
+                menu jaseowns_MenuSelection 3
+                getlabel backpack jaseowns_PingCheck
+            endif
+            if find jaseowns_AirPetOne ground -1 -1 18 as jaseowns_MenuSelection
+                overhead "Guarding" 89 jaseowns_MenuSelection
+                menu jaseowns_MenuSelection 3
+                getlabel backpack jaseowns_PingCheck
+            endif
+            if find jaseowns_AirPetTwo ground -1 -1 18 as jaseowns_MenuSelection
+                overhead "Guarding" 89 jaseowns_MenuSelection
+                menu jaseowns_MenuSelection 3
+                getlabel backpack jaseowns_PingCheck
+            endif
+            if find jaseowns_SummonCreaturePetOne ground -1 -1 18 as jaseowns_MenuSelection
+                overhead "Guarding" 89 jaseowns_MenuSelection
+                menu jaseowns_MenuSelection 3
+                getlabel backpack jaseowns_PingCheck
+            endif
+        
+            attack jaseowns_BOT_TARGET
+            
+            
+            while not targetexists 
+                if jaseowns_DEBUG_MODE = 1
+                    sysmsg "ALL KILL NO SKILL" 99
+                endif
+                hotkey "All kill" 
+                getlabel backpack jaseowns_PingCheck
+            endwhile
+            if targetexists 
+                settimer jaseowns_BOT_TARGET_SELECTED_TIMER 0
+                target jaseowns_BOT_TARGET
+                if warmode
+                    @setvar! jaseowns_BOT_STATE 40
+                else
+                    @setvar! jaseowns_BOT_STATE 35
+                endif
+            endif
+            if targetexists 
+                if jaseowns_DEBUG_MODE = 1
+                    overhead "All kill no skill cancel"
+                endif
+                hotkey "Cancel Current Target"
+                @setvar! jaseowns_BOT_STATE 10
+            endif
+        else
+            if warmode
+                @setvar! jaseowns_BOT_STATE 40
+            else
+                @setvar! jaseowns_BOT_STATE 35
+            endif
+        endif
+
+    elseif jaseowns_BOT_STATE = 25
+       // and warmode
+        if jaseowns_BOT_TARGET != jaseowns_BOT_TARGET_PREVIOUS
+            if not targetexists 
+                if jaseowns_DEBUG_MODE = 1
+                    sysmsg "ARMS LORE SIGHT CHECK" 23
+                endif
+                useskill "ArmsLore"
+                getlabel backpack jaseowns_PingCheck
+                while not targetexists and skill "Magery" >= 50
+                    cast "Weaken"
+                    wft 500
+                endwhile
+            endif
+            if targetexists 
+                target jaseowns_BOT_TARGET
+                getlabel backpack jaseowns_PingCheck
+                if not targetexists 
+                    cooldown "LOS Check" jaseowns_ArmsLoreCheckTimerCD
+                    if insysmsg "You cannot inspect that"
+                        overhead " < Kill this guy > " 99 jaseowns_BOT_TARGET
+                        @setvar! jaseowns_BOT_STATE 30        
+                    elseif insysmsg "Target cannot be seen"
+                        overhead " < Not able to target > " 34 jaseowns_BOT_TARGET
+                        @setvar! jaseowns_BOT_STATE 20
+                    elseif insysmsg "That is too far away."
+                        overhead " < Too far > " 34 jaseowns_BOT_TARGET
+                        @setvar! jaseowns_BOT_STATE 20
+                    else
+                        overhead " < Kill this guy > " 99 jaseowns_BOT_TARGET
+                        @setvar! jaseowns_BOT_STATE 30        
+                    endif
+                else
+                    if jaseowns_DEBUG_MODE = 1
+                        overhead "Canceling during bot state 25 (armslore)"
+                    endif
+                    hotkey "Cancel Current Target"
+                    @setvar! jaseowns_BOT_STATE 20
+                endif
+            endif
+            settimer jaseowns_ArmsLoreCheckTimer 0
+        elseif timer jaseowns_ArmsLoreCheckTimer >= jaseowns_ArmsLoreCheckTimerCD
+            cooldown "LOS Check" 0
+            @setvar! jaseowns_BOT_TARGET_PREVIOUS 0
+        else
+            @setvar! jaseowns_BOT_TARGET_PREVIOUS 0
+            @setvar! jaseowns_BOT_STATE 20
+        endif
+
+        // do line of sight check
+        // if found, goto 30
+        // else back to 20
+
+    elseif jaseowns_BOT_STATE = 21
+        ## We found a target we do not want to kill
+        
+        if warmode
+            // continue to find target
+                    
+            hotkey "Next Non-Friendly Monster Target"
+            getlabel backpack jaseowns_PingCheck
+            if insysmsg "No one matching"
+                @setvar! jaseowns_BOT_TARGET_PREVIOUS jaseowns_BOT_TARGET
+                @setvar! jaseowns_BOT_TARGET 0
+            else
+                @setvar! jaseowns_BOT_TARGET_PREVIOUS jaseowns_BOT_TARGET
+                @setvar! jaseowns_BOT_TARGET lasttarget
+            endif
+            
+             @setvar! jaseowns_BOT_SELF self                            
+            
+            if jaseowns_SKIP_LAST_TARGET = jaseowns_BOT_TARGET
+                if jaseowns_DEBUG_MODE = 1
+                    overhead "Do not attack a friendly face!" 183
+                endif
+            elseif inlist jaseowns_IGNORE_CREATURES jaseowns_BOT_TARGET
+                // do nothing
+                if jaseowns_DEBUG_MODE = 1
+                    sysmsg "Do nothing we need to ignore that bro" 88
+                endif
+                @setvar! jaseowns_BOT_STATE 21
+
+                
+            elseif not dead jaseowns_BOT_TARGET and find jaseowns_BOT_TARGET ground -1 -1 10
+                getlabel jaseowns_BOT_TARGET helperDesc
+                
+                if "banshee" in helperDesc or "apparition" in helperDesc or "skulker" in helperDesc or "wendigo" in helperDesc or "creeping earth" in helperDesc or "creeping soil" in helperDesc or "jaguar" in helperDesc or "camomeal" in helperDesc or "giant chameleon" in helperDesc or "colossal trapdoor spider" in helperDesc or "giant trapdoor spider" in helperDesc or "trapdoor spider" in helperDesc or "chameleon" in helperDesc or "smoke dragon" in helperDesc or "smoke drake    nusero" in helperDesc or "smoke faerie dragon" in helperDesc or "rag witch" in helperDesc or "temple guardian" in helperDesc or "sea hag" in helperDesc or "gargan scorcher" in helperDesc or "nightstalker" in helperDesc or "shade wolf" in helperDesc or "vampiric consort" in helperDesc or "alpha shadowbeast" in helperDesc or "errant core of exodus" in helperDesc or "exothrrug" in helperDesc or "greater smoke dragon" in helperDesc or "navreys broodling" in helperDesc or "ratman rogue" in helperDesc or "shadowbeast" in helperDesc or "sneaking spiderling" in helperDesc or "time lurker" in helperDesc or "arboreal stalker" in helperDesc or "arboreal watcher" in helperDesc or "brigand ambusher" in helperDesc or "bushwhacker   wilderness" in helperDesc or "drow blademaster" in helperDesc or "drow ranger" in helperDesc or "magma serpent" in helperDesc or "minotaur skirmisher" in helperDesc or "sandstalker" in helperDesc
+                    settimer jaseowns_BOT_TARGET_IS_INVIS_MOB 0
+                endif
+                
+                if timerexists jaseowns_BOT_TARGET_IS_INVIS_MOB 
+                    if timer jaseowns_BOT_TARGET_IS_INVIS_MOB >= 30000
+                        removetimer jaseowns_BOT_TARGET_IS_INVIS_MOB
+                    endif
+                endif
+        
+            
+                if "(summoned" in helperDesc or "(bonded" in helperDesc or "(tamed" in helperDesc or "the battle trainer" in helperDesc
+                    overhead "▼ Player pet - IGNORE ▼" 77 jaseowns_BOT_TARGET
+                    
+                    pushlist jaseowns_IGNORE_CREATURES jaseowns_BOT_TARGET
+                    
+                    @setvar! jaseowns_BOT_TARGET_PREVIOUS 0
+                    @setvar! jaseowns_BOT_TARGET 0
+                    @setvar! jaseowns_USER_LAST_TARGET 0
+                    
+               else
+                    overhead " THIS GUY HERE " 88 jaseowns_BOT_TARGET
+                    @setvar! jaseowns_BOT_STATE 25               
+               endif  
+            elseif jaseowns_BOT_SELF = jaseowns_BOT_TARGET
+                @setvar! jaseowns_SKIP_LAST_TARGET self
+                if jaseowns_DEBUG_MODE = 1
+                    overhead "dont attack urself bro" 34
+                endif
+            else
+                clearlist jaseowns_OverheadHelperList
+                clearlist jaseowns_CastedPoisonList
+                clearlist jaseowns_CastedCrusedList
+                clearlist jaseowns_CastedManaDrainList
+                //getlabel jaseowns_BOT_TARGET testy
+                overhead "Not found or too far" 34
+            endif
+        
+        else
+            @setvar! jaseowns_BOT_STATE 10
+        endif
+    
+    elseif jaseowns_BOT_STATE = 20 and warmode
+        ###
+        # Scan for targets
+        ###
+        // TODO: make sure to target Next Monster Target if we dont wanna target closest
+        # hotkey "Target Closest Grey Monster"
+        # hotkey "Next Non-Friendly Monster Target"
+        hotkey "Target Closest Non-Friendly Monster"
+
+        getlabel backpack jaseowns_PingCheck
+        if insysmsg "No one matching"
+            @setvar! jaseowns_BOT_TARGET_PREVIOUS jaseowns_BOT_TARGET
+            @setvar! jaseowns_BOT_TARGET 0
+        else
+            @setvar! jaseowns_BOT_TARGET_PREVIOUS jaseowns_BOT_TARGET
+            @setvar! jaseowns_BOT_TARGET lasttarget
+        endif
+
+        @setvar! jaseowns_BOT_SELF self
+        
+        if jaseowns_SKIP_LAST_TARGET = jaseowns_BOT_TARGET
+            if jaseowns_DEBUG_MODE = 1
+                overhead "Do not attack a friendly face!" 183
+            endif
+        elseif inlist jaseowns_IGNORE_CREATURES jaseowns_BOT_TARGET
+            // do nothing
+            if jaseowns_DEBUG_MODE = 1
+                sysmsg "Do nothing we need to ignore that bro" 88
+            endif
+            @setvar! jaseowns_BOT_STATE 21
+
+            
+        elseif not dead jaseowns_BOT_TARGET and find jaseowns_BOT_TARGET ground -1 -1 10
+            getlabel jaseowns_BOT_TARGET helperDesc
+ 
+            if "banshee" in helperDesc or "apparition" in helperDesc or "skulker" in helperDesc or "wendigo" in helperDesc or "creeping earth" in helperDesc or "creeping soil" in helperDesc or "jaguar" in helperDesc or "camomeal" in helperDesc or "giant chameleon" in helperDesc or "colossal trapdoor spider" in helperDesc or "giant trapdoor spider" in helperDesc or "trapdoor spider" in helperDesc or "chameleon" in helperDesc or "smoke dragon" in helperDesc or "smoke drake    nusero" in helperDesc or "smoke faerie dragon" in helperDesc or "rag witch" in helperDesc or "temple guardian" in helperDesc or "sea hag" in helperDesc or "gargan scorcher" in helperDesc or "nightstalker" in helperDesc or "shade wolf" in helperDesc or "vampiric consort" in helperDesc or "alpha shadowbeast" in helperDesc or "errant core of exodus" in helperDesc or "exothrrug" in helperDesc or "greater smoke dragon" in helperDesc or "navreys broodling" in helperDesc or "ratman rogue" in helperDesc or "shadowbeast" in helperDesc or "sneaking spiderling" in helperDesc or "time lurker" in helperDesc or "arboreal stalker" in helperDesc or "arboreal watcher" in helperDesc or "brigand ambusher" in helperDesc or "bushwhacker   wilderness" in helperDesc or "drow blademaster" in helperDesc or "drow ranger" in helperDesc or "magma serpent" in helperDesc or "minotaur skirmisher" in helperDesc or "sandstalker" in helperDesc
+                overhead "This was an invis mob"
+                settimer jaseowns_BOT_TARGET_IS_INVIS_MOB 0
+            endif
+            
+            if timerexists jaseowns_BOT_TARGET_IS_INVIS_MOB 
+                if timer jaseowns_BOT_TARGET_IS_INVIS_MOB >= 30000
+                    removetimer jaseowns_BOT_TARGET_IS_INVIS_MOB
+                endif
+            endif
+        
+           if "(summoned" in helperDesc or "(bonded" in helperDesc or "(tamed" in helperDesc or "the battle trainer" in helperDesc
+                overhead "▼ Player pet - IGNORE ▼" 77 jaseowns_BOT_TARGET
+                
+                pushlist jaseowns_IGNORE_CREATURES jaseowns_BOT_TARGET
+                
+                @setvar! jaseowns_BOT_TARGET_PREVIOUS 0
+                @setvar! jaseowns_BOT_TARGET 0
+                @setvar! jaseowns_USER_LAST_TARGET 0
+                
+                
+           else
+                overhead " THIS GUY HERE " 88 jaseowns_BOT_TARGET
+                @setvar! jaseowns_BOT_STATE 25               
+           endif  
+        elseif jaseowns_BOT_SELF = jaseowns_BOT_TARGET
+            @setvar! jaseowns_SKIP_LAST_TARGET self
+            if jaseowns_DEBUG_MODE = 1
+                overhead "dont attack urself bro" 34
+            endif
+        else
+            //getlabel jaseowns_BOT_TARGET testy
+            overhead "Not found or too far" 34
+        endif
+        
+        // combat
+
+    
+
+            
+        
+        
+    elseif jaseowns_BOT_STATE = 20
+        if followers > 0
+            say "all follow me"
+        endif
+        @setvar! jaseowns_BOT_STATE 10
+    elseif jaseowns_BOT_STATE = 15
+    
+        @clearignore
+        
+        removelist summonList
+        createlist summonList
+            
+        if followers = 0
+            @setvar! followCount 0
+        elseif followers = 1
+            @setvar! followCount 1
+        elseif followers = 2
+            @setvar! followCount 2
+        elseif followers = 3
+            @setvar! followCount 3
+        elseif followers = 4
+            @setvar! followCount 4
+        elseif followers = 5
+            @setvar! followCount 5
+        endif
+        
+        @setvar! jaseowns_SummonManaRequired 50
+        
+        if castSummonEarthElementalCount > 0 or castSummonMummyCount > 0
+            if dead jaseowns_EarthPetOne or not find jaseowns_EarthPetOne ground -1 -1 18
+                if followers < 4
+                    pushlist summonList "Earth Elemental"
+                    @setvar! jaseowns_EarthPetOne 1
+                endif
+            else
+                @ignore jaseowns_EarthPetOne
+            endif
+            if castSummonEarthElementalCount > 1 or castSummonMummyCount > 1
+                if dead jaseowns_EarthPetTwo or not find jaseowns_EarthPetTwo ground -1 -1 18
+                    if followers < 4
+                        pushlist summonList "Earth Elemental"
+                        @setvar! jaseowns_EarthPetTwo 1
+                    endif
+                else
+                    @ignore jaseowns_EarthPetTwo
+                endif
+            endif
+        endif
+        
+        if castSummonFireElementalCount > 0 or castSummonLichCount > 0
+            if dead jaseowns_FirePetOne or not find jaseowns_FirePetOne ground -1 -1 18
+                if followers < 4
+                    pushlist summonList "Fire Elemental"
+                    @setvar! jaseowns_FirePetOne 1
+                endif
+            else 
+                @ignore jaseowns_FirePetOne
+            endif
+            if castSummonFireElementalCount > 1 or castSummonLichCount > 1
+                if dead jaseowns_FirePetTwo or not find jaseowns_FirePetTwo ground -1 -1 18
+                    if followers < 4
+                        pushlist summonList "Fire Elemental"
+                        @setvar! jaseowns_FirePetTwo 1
+                    endif
+                else
+                    @ignore jaseowns_FirePetTwo
+                endif
+            endif
+        endif
+
+        if castSummonDemonCount > 0 or castSummonThrallCount > 0
+            if dead jaseowns_DemonPetOne or not find jaseowns_DemonPetOne ground -1 -1 18
+                if followers < 4
+                    pushlist summonList "Summon Daemon"
+                    @setvar! jaseowns_DemonPetOne 1
+                endif
+            else
+               @ignore jaseowns_DemonPetOne
+            endif
+            if castSummonDemonCount > 1 or castSummonThrallCount > 1
+                if dead jaseowns_DemonPetTwo or not find jaseowns_DemonPetTwo ground -1 -1 18
+                    if followers < 4
+                        pushlist summonList "Summon Daemon"
+                        @setvar! jaseowns_DemonPetTwo 1
+                    endif
+                else
+                    @ignore jaseowns_DemonPetTwo
+                endif
+            endif
+        endif
+
+        if castSummonAirCount > 0 or castSummonFiendCount > 0
+            if dead jaseowns_AirPetOne or not find jaseowns_AirPetOne ground -1 -1 18
+                if followers < 4
+                    pushlist summonList "Air Elemental"
+                    @setvar! jaseowns_AirPetOne 1
+                endif
+            else
+                @ignore jaseowns_AirPetOne
+            endif
+            if castSummonAirCount > 1 or castSummonFiendCount > 1
+                if dead jaseowns_AirPetTwo or not find jaseowns_AirPetTwo ground -1 -1 18
+                    if followers < 4
+                        pushlist summonList "Air Elemental"
+                        @setvar! jaseowns_AirPetTwo 1
+                    else
+                        @ignore jaseowns_AirPetTwo
+                    endif
+                endif
+            endif
+        endif
+
+        if castSummonWaterCount > 0 or castSummonRagWitchCount > 0
+            if dead jaseowns_WaterPetOne or not find jaseowns_WaterPetOne ground -1 -1 18
+                if followers < 4
+                    pushlist summonList "Water Elemental"
+                    @setvar! jaseowns_WaterPetOne 1
+                endif
+            else
+                @ignore jaseowns_WaterPetOne
+            endif
+            if castSummonWaterCount > 1 or castSummonRagWitchCount > 1
+                if dead jaseowns_WaterPetTwo or not find jaseowns_WaterPetTwo ground -1 -1 18
+                    if followers < 4
+                        pushlist summonList "Water Elemental"
+                        @setvar! jaseowns_WaterPetTwo 1
+                    endif
+                else
+                    @ignore jaseowns_WaterPetTwo
+                endif
+            endif
+        endif
+
+        if castEnergyVortexCount > 0 or castJackalSpiritCount > 0
+            if dead jaseowns_EvPetOne or not find jaseowns_EvPetOne ground -1 -1 18
+                if followers < 5
+                    pushlist summonList "Energy Vortex"
+                    @setvar! jaseowns_EvPetOne 1
+                endif
+            else 
+                @ignore jaseowns_EvPetOne
+            endif
+        endif
+
+        if castBladeSpiritCount > 0 or castSkeletalHuskCount > 0
+            if dead jaseowns_BsPetOne or not find jaseowns_BsPetOne ground -1 -1 18
+                if followers < 5
+                    @setvar! jaseowns_SummonManaRequired 14
+                    pushlist summonList "Blade Spirits"
+                    @setvar! jaseowns_BsPetOne 1
+                endif
+            else 
+                @ignore jaseowns_BsPetOne
+            endif
+        endif
+        
+        if castSummonCreatureCount > 0
+            if dead jaseowns_SummonCreaturePetOne or not find jaseowns_SummonCreaturePetOne ground -1 -1 18
+                if followers < 5
+                    @setvar! jaseowns_SummonManaRequired 14
+                    pushlist summonList "Summ. Creature"
+                    @setvar! jaseowns_SummonCreaturePetOne 1
+                endif
+            else 
+                @ignore jaseowns_SummonCreaturePetOne
+            endif
+        endif
+        
+        foreach summon in summonList
+            if followers < 5
+                overhead "Casting Summon: {{summon}}" 88
+                while mana < jaseowns_SummonManaRequired
+                    
+                    if jaseowns_EatShroomies = 1 and timer jaseowns_EatShroomiesTimer >= jaseowns_EatShroomiesTimerCD and diffmana >= jaseowns_EatShroomiesAtDiffMana and findtype 29012 backpack 2963 as item
+                        clearsysmsg 
+                        dclick item
+                        getlabel backpack jaseowns_PingCheck
+                        if insysmsg "You are already at your maximum mana."
+                            // do nothing
+                        elseif insysmsg "You consume a magic mushroom and restore some mana."
+                            settimer jaseowns_EatShroomiesTimer 0
+                        endif
+                        if mana >= jaseowns_SummonManaRequired
+                            break
+                        endif
+                    endif
+                    if hp <= jaseowns_HealthCheckToCastHeal
+                        break
+                    endif
+                    overhead "waiting for mana" 88
+                    if not findbuff "Actively Meditating"
+                        useskill "meditation"
+                    endif
+                    wait 200
+                endwhile
+                
+                if hp <= jaseowns_HealthCheckToCastHeal
+                    break
+                endif
+                
+                @setvar! jaseowns_NeedVengefulSpirit 0
+                
+                if summon = "Earth Elemental" and castSummonMummyCount > 0
+                    @setvar! jaseowns_NeedVengefulSpirit 1
+                elseif summon = "Fire Elemental" and castSummonLichCount > 0
+                    @setvar! jaseowns_NeedVengefulSpirit 1
+                elseif summon = "Summon Daemon" and castSummonThrallCount > 0
+                    @setvar! jaseowns_NeedVengefulSpirit 1
+                elseif summon = "Air Elemental" and castSummonFiendCount > 0
+                    @setvar! jaseowns_NeedVengefulSpirit 1
+                elseif summon = "Water Elemental" and castSummonRagWitchCount > 0
+                    @setvar! jaseowns_NeedVengefulSpirit 1
+                elseif summon = "Summ. Creature" and skill "Necromancy" >= 50
+                    @setvar! jaseowns_NeedVengefulSpirit 1
+                elseif summon = "Energy Vortex" and castJackalSpiritCount > 0
+                    @setvar! jaseowns_NeedVengefulSpirit 1
+                elseif summon = "Blade Spirits" and castSkeletalHuskCount > 0
+                    @setvar! jaseowns_NeedVengefulSpirit 1
+                endif
+
+                if jaseowns_NeedVengefulSpirit = 1
+                    if timer jaseowns_VengefulSpiritTimer >= jaseowns_VengefulSpiritTimerCD and skill "Necromancy" >= 50
+                        yell "[VengefulSpirit"
+                        settimer jaseowns_VengefulSpiritTimer 0
+                        wait 500
+                    endif
+                elseif timer jaseowns_VengefulSpiritTimer <= jaseowns_VengefulSpiritTimerCD and skill "Necromancy" >= 50
+                    overhead  "Waiting for spirit to go away" 88
+                    break
+                endif
+
+                @setvar! jaseowns_SummonSuccess 1
+                while followers = followCount
+                    cast summon
+                    wft 500
+                    if targetexists 
+                        hotkey "Target Self"
+                        getlabel backpack jaseowns_PingCheck
+                    endif
+                    if hp <= jaseowns_HealthCheckToCastHeal
+                        if targetexists 
+                            hotkey "Cancel Current target"
+                        endif
+                        hotkey '> Interrupt'
+                        @setvar! jaseowns_SummonSuccess 0
+                        break
+                    elseif insysmsg "You have too many followers to cast that spell"
+                        break
+                    endif
+                    if timer jaseowns_WitherTimer >= jaseowns_WitherTimerCD and skill "Necromancy" >= 95
+                        yell "[Wither"
+                        settimer jaseowns_WitherTimer 0
+                    endif
+                endwhile
+                
+                if jaseowns_SummonSuccess = 1
+                    getlabel backpack jaseowns_PingCheck
+                    @setvar! jaseowns_AttemptedSummon 0
+
+                    // 158 - an ancient mummy
+                    // 14 - an earth elemental
+                    if summon = "Earth Elemental" and findtype 158|14 ground -1 -1 12 as myPet
+
+                        while jaseowns_AttemptedSummon = 0 and findtype 158|14 ground -1 -1 12 as jaseowns_PotentialPet
+                            if noto jaseowns_PotentialPet = "friend"
+                                overhead "Potential Pet" 66 jaseowns_PotentialPet
+                                rename jaseowns_PotentialPet "Jaseowns"
+                                getlabel jaseowns_PotentialPet jaseowns_PetDescription 
+                                if insysmsg "That name is unacceptable"
+                                    @setvar! jaseowns_AttemptedSummon jaseowns_PotentialPet    
+                                else
+                                    @ignore jaseowns_PotentialPet
+                                endif
+                            else
+                                @ignore jaseowns_PotentialPet
+                            endif
+                        endwhile    
+
+                        if jaseowns_EarthPetOne = 1
+                            @setvar! jaseowns_EarthPetOne jaseowns_AttemptedSummon
+                        elseif jaseowns_EarthPetTwo = 1
+                            @setvar! jaseowns_EarthPetTwo jaseowns_AttemptedSummon
+                        endif
+                        
+                    // 24 - a lich
+                    // 15 - a fire elemental
+                    elseif summon = "Fire Elemental" and findtype 24|15 ground -1 -1 12
+                        
+                        while jaseowns_AttemptedSummon = 0 and findtype 24|15 ground -1 -1 12 as jaseowns_PotentialPet
+                            if noto jaseowns_PotentialPet = "friend"
+                                overhead "Potential Pet" 66 jaseowns_PotentialPet
+                                rename jaseowns_PotentialPet "Jaseowns"
+                                getlabel jaseowns_PotentialPet jaseowns_PetDescription 
+                                if insysmsg "That name is unacceptable"
+                                    @setvar! jaseowns_AttemptedSummon jaseowns_PotentialPet    
+                                else
+                                    @ignore jaseowns_PotentialPet
+                                endif
+                            else
+                                @ignore jaseowns_PotentialPet
+                            endif
+                        endwhile    
+
+                        if jaseowns_FirePetOne = 1
+                            @setvar! jaseowns_FirePetOne jaseowns_AttemptedSummon
+                        elseif jaseowns_FirePetTwo = 1
+                            @setvar! jaseowns_FirePetTwo jaseowns_AttemptedSummon
+                        endif
+                        
+                    // 9 - a deamon
+                    // 722 - a vampire thrall
+                    elseif summon = "Summon Daemon" and findtype 9|722 ground -1 -1 12
+                        
+                        while jaseowns_AttemptedSummon = 0 and findtype 9|722 ground -1 -1 12 as jaseowns_PotentialPet
+                            if noto jaseowns_PotentialPet = "friend"
+                                overhead "Potential Pet" 66 jaseowns_PotentialPet
+                                rename jaseowns_PotentialPet "Jaseowns"
+                                getlabel jaseowns_PotentialPet jaseowns_PetDescription 
+                                if insysmsg "That name is unacceptable"
+                                    @setvar! jaseowns_AttemptedSummon jaseowns_PotentialPet    
+                                else
+                                    @ignore jaseowns_PotentialPet
+                                endif
+                            else
+                                @ignore jaseowns_PotentialPet
+                            endif
+                        endwhile    
+
+                        if jaseowns_DemonPetOne = 1
+                            @setvar! jaseowns_DemonPetOne jaseowns_AttemptedSummon
+                        elseif jaseowns_DemonPetTwo = 1
+                            @setvar! jaseowns_DemonPetTwo jaseowns_AttemptedSummon
+                        endif
+         
+                    // 16 - water elemental
+                    // 740 - a rag witch
+                    elseif summon = "Water Elemental" and findtype 16|740 ground -1 -1 12
+                        
+                        while jaseowns_AttemptedSummon = 0 and findtype 9|722 ground -1 -1 12 as jaseowns_PotentialPet
+                            if noto jaseowns_PotentialPet = "friend"
+                                overhead "Potential Pet" 66 jaseowns_PotentialPet
+                                rename jaseowns_PotentialPet "Jaseowns"
+                                getlabel jaseowns_PotentialPet jaseowns_PetDescription 
+                                if insysmsg "That name is unacceptable"
+                                    @setvar! jaseowns_AttemptedSummon jaseowns_PotentialPet    
+                                else
+                                    @ignore jaseowns_PotentialPet
+                                endif
+                            else
+                                @ignore jaseowns_PotentialPet
+                            endif
+                        endwhile    
+
+                        if jaseowns_WaterPetOne = 1
+                            @setvar! jaseowns_WaterPetOne jaseowns_AttemptedSummon
+                        elseif jaseowns_WaterPetTwo = 1
+                            @setvar! jaseowns_WaterPetTwo jaseowns_AttemptedSummon
+                        endif
+     
+                    // 13 - air elemental
+                    // 306 - a skeletal fiend
+                    elseif summon = "Air Elemental" and findtype 13|306 ground -1 -1 12
+                        
+                        while jaseowns_AttemptedSummon = 0 and findtype 13|306 ground -1 -1 12 as jaseowns_PotentialPet
+                            if noto jaseowns_PotentialPet = "friend"
+                                overhead "Potential Pet" 66 jaseowns_PotentialPet
+                                rename jaseowns_PotentialPet "Jaseowns"
+                                getlabel jaseowns_PotentialPet jaseowns_PetDescription 
+                                if insysmsg "That name is unacceptable"
+                                    @setvar! jaseowns_AttemptedSummon jaseowns_PotentialPet    
+                                else
+                                    @ignore jaseowns_PotentialPet
+                                endif
+                            else
+                                @ignore jaseowns_PotentialPet
+                            endif
+                        endwhile    
+
+                        if jaseowns_AirPetOne = 1
+                            @setvar! jaseowns_AirPetOne jaseowns_AttemptedSummon
+                        elseif jaseowns_AirPetTwo = 1
+                            @setvar! jaseowns_AirPetTwo jaseowns_AttemptedSummon
+                        endif
+                                
+                    #3   a rotting flesh
+                    #3    a zombie
+                    #26    a ghoul
+                    #29    a blood ape
+                    #39    a molten mongbat
+                    #50    a skeletal mage
+                    #51    shallow water
+                    #56    a skeleton
+                    #57    a skeletal knight
+                    #74    an imp
+                    #74    a searing imp
+                    #202    a monitor hatchling
+                    #206    a searing lizard
+                    #211    a black bear
+                    #211    a brown bear
+                    #212    a grizzly bear
+                    #213    a cave bear
+                    #213    a polar bear
+                    #214    a jaguar
+                    #215    an aegis rat
+                    #225    a flamehound
+                    #302    a corpse eater
+                    #302    a skulker
+                    #317    a cave bat
+                    #317    a firebat
+                    #317    a vampire bat
+                    #382    a skeletal marksman
+                    #716    a primordial whelp
+                    #718    a dragon whelp
+                    #718    a drake whelp
+                    #729    a sand crab
+                    #737    a trapdoor spider
+                    #739    a wolfhound
+                    #776    a fire minion
+                    #776    a minion
+                    elseif summon = "Summ. Creature" and findtype 3|3|26|29|39|50|51|56|57|74|74|202|206|211|211|212|213|213|214|215|225|302|302|317|317|317|382|716|718|718|729|737|739|776|776 ground -1 -1 12
+
+                        while jaseowns_AttemptedSummon = 0 and findtype 3|3|26|29|39|50|51|56|57|74|74|202|206|211|211|212|213|213|214|215|225|302|302|317|317|317|382|716|718|718|729|737|739|776|776 ground -1 -1 12 as jaseowns_PotentialPet
+                            if noto jaseowns_PotentialPet = "friend"
+                                overhead "Potential Pet" 66 jaseowns_PotentialPet
+                                rename jaseowns_PotentialPet "Jaseowns"
+                                getlabel jaseowns_PotentialPet jaseowns_PetDescription 
+                                if insysmsg "That name is unacceptable"
+                                    @setvar! jaseowns_AttemptedSummon jaseowns_PotentialPet    
+                                else
+                                    @ignore jaseowns_PotentialPet
+                                endif
+                            else
+                                @ignore jaseowns_PotentialPet
+                            endif
+                        endwhile    
+
+                        if jaseowns_SummonCreaturePetOne = 1
+                            @setvar! jaseowns_SummonCreaturePetOne jaseowns_AttemptedSummon
+                        endif
+                        
+                    // 13 - an energy vortex
+                    // 391 - a jackal spirit
+                    elseif summon = "Energy Vortex" and findtype 13|391 ground -1 -1 18 as myPet
+                        
+                        while jaseowns_AttemptedSummon = 0 and findtype 13|306 ground -1 -1 18 as jaseowns_PotentialPet
+                            if noto jaseowns_PotentialPet = "friend"
+                                overhead "Potential Pet" 66 jaseowns_PotentialPet
+                                rename jaseowns_PotentialPet "Jaseowns"
+                                getlabel jaseowns_PotentialPet jaseowns_PetDescription 
+                                if insysmsg "That name is unacceptable"
+                                    @setvar! jaseowns_AttemptedSummon jaseowns_PotentialPet    
+                                else
+                                    @ignore jaseowns_PotentialPet
+                                endif
+                            else
+                                @ignore jaseowns_PotentialPet
+                            endif
+                        endwhile    
+
+                        if jaseowns_EvPetOne = 1
+                            @setvar! jaseowns_EvPetOne jaseowns_AttemptedSummon
+                        endif
+
+                    // 574 - a blade spirit
+                    // 309 - a skeletal husk
+                    elseif summon = "Blade Spirits" and findtype 574|309 ground -1 -1 18 as myPet
+                        
+                        while jaseowns_AttemptedSummon = 0 and findtype 13|306 ground -1 -1 18 as jaseowns_PotentialPet
+                            if noto jaseowns_PotentialPet = "friend"
+                                overhead "Potential Pet" 66 jaseowns_PotentialPet
+                                rename jaseowns_PotentialPet "Jaseowns"
+                                getlabel jaseowns_PotentialPet jaseowns_PetDescription 
+                                if insysmsg "That name is unacceptable"
+                                    @setvar! jaseowns_AttemptedSummon jaseowns_PotentialPet    
+                                else
+                                    @ignore jaseowns_PotentialPet
+                                endif
+                            else
+                                @ignore jaseowns_PotentialPet
+                            endif
+                        endwhile    
+
+                        if jaseowns_BsPetOne = 1
+                            @setvar! jaseowns_BsPetOne jaseowns_AttemptedSummon
+                        endif
+
+                    endif
+                    
+                    if jaseowns_AttemptedSummon != 0
+                        overhead "We summoned this guy" 89 jaseowns_AttemptedSummon
+                    endif
+                endif
+            endif
+            break
+        endfor
+        
+        @clearignore
+        @setvar! jaseowns_BOT_STATE 10
+    
+    elseif jaseowns_BOT_STATE = 11
+        if jaseowns_CastMagicMushroomCount != 0 and counttype "mushroom" backpack < jaseowns_CastMagicMushroomIfBelowCount
+            if mana >= 30
+                while counttype "mushroom" backpack < jaseowns_CastMagicMushroomCount
+                    cast "Create Food"
+                    wait 800
+                    if diffhits >= 20 or counttype "mushroom" backpack = 0
+                        break
+                    endif
+                endwhile
+            endif
+        endif
+        @setvar! jaseowns_BOT_STATE 10
+    elseif jaseowns_BOT_STATE = 10 
+       
+        @setvar! jaseowns_BOT_BARD_PEACED 0
+        @setvar! jaseowns_BOT_BARD_DISCORDED 0
+    
+        if not queued and jaseowns_CastBless = 1 and mana >= jaseowns_CastBlessMinMana
+            if not findbuff "Strength" or not findbuff "Agility" or not findbuff "Cunning"
+                while not targetexists 
+                    cast "Bless"
+                    getlabel backpack jaseowns_PingCheck
+                endwhile
+                if targetexists 
+                    hotkey "Target Self"
+                endif
+            endif
+        endif
+        
+        if not queued and jaseowns_CastReactiveArmor = 1 and mana >= jaseowns_CastReactiveArmorMinMana
+            if not findbuff "Reactive Armor" and timer jaseowns_CastReactiveArmorTimer >= 60000
+                hotkey "Reactive Armor"
+            endif
+            
+            if findbuff "Reactive Armor"
+                settimer jaseowns_CastReactiveArmorTimer 0
+            endif
+        endif
+
+        if not queued and jaseowns_CastArchProtection = 1 and mana >= jaseowns_CastArchProtectionMinMana
+            if not findbuff "Protection" and timer jaseowns_CastArchProtectionTimer >= 2000
+                if jaseowns_SUMMONER_MAYBE = 0 or followers >= 5
+                    while not targetexists 
+                        cast "Arch Protection"
+                        getlabel backpack jaseowns_PingCheck
+                    endwhile
+                    if targetexists 
+                        hotkey "Target Self"
+                    endif
+                endif
+            endif
+            if findbuff "Protection" 
+                settimer jaseowns_CastArchProtectionTimer 0
+            endif
+        endif
+
+
+        if not queued and jaseowns_CastMagicReflection = 1 and mana >= jaseowns_CastMagicReflectionMinMana
+            if not findbuff "Magic Reflect" and timer jaseowns_CastMagicReflectionTimer >= 60000
+                hotkey "Magic Reflection"
+            endif
+            
+            if findbuff "Magic Reflect" 
+                settimer jaseowns_CastMagicReflectionTimer 0
+            endif
+        endif
+    
+        if warmode
+            if timerexists jaseowns_WeCastedSuccessfullyTimer
+                removetimer jaseowns_WeCastedSuccessfullyTimer
+            endif
+            if find jaseowns_MyMainTamerPet ground -1 -1 12 as jasePetInsideLoop
+                overhead "Guarding" 88 jasePetInsideLoop
+                menu jasePetInsideLoop 3
+            endif    
+            
+            if jaseowns_CastMagicMushroomCount != 0 and counttype "mushroom" backpack < jaseowns_CastMagicMushroomIfBelowCount
+                @setvar! jaseowns_BOT_STATE 11
+            else
+                @setvar! jaseowns_BOT_STATE 20    
+            endif   
+        else
+            if jaseowns_CastMagicMushroomCount != 0 and counttype "mushroom" backpack < jaseowns_CastMagicMushroomIfBelowCount
+                @setvar! jaseowns_BOT_STATE 11
+            endif    
+            if timerexists jaseowns_WeCastedSuccessfullyTimer
+                removetimer jaseowns_WeCastedSuccessfullyTimer
+            endif
+        endif
+    elseif jaseowns_BOT_STATE = 999
+       sysmsg "{{jaseowns_BOT_STATE}}: Unknown state" 11
+    elseif jaseowns_DEBUG_MODE = 1
+        sysmsg "{{jaseowns_BOT_STATE}}: Unknown state" 11
+    endif
+    
+    
+    if jaseowns_BOT_STATE_PREVIOUS != jaseowns_BOT_STATE
+        if jaseowns_DEBUG_MODE = 1
+            sysmsg "State: {{jaseowns_BOT_STATE}}    Prev: {{jaseowns_BOT_STATE_PREVIOUS}}" 68
+        endif
+        @setvar! jaseowns_BOT_STATE_PREVIOUS jaseowns_BOT_STATE
+    endif
+    
+
+
+    getlabel backpack jaseowns_PingCheck
+endwhile
+
+while dead 
+    overhead "You died bro" 34
+    wait 1000
+endwhile
