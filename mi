@@ -1,0 +1,335 @@
+# Ultimate Mining and Lumber Jacking Script by Jaseowns
+# UO Outlands
+####
+#
+# 7/19/2024
+#   - Added variable to only mine or lumber
+#   - Move ore/ingots into trapped pouch
+#   - Removed captcha logic
+
+
+### Original Notes:
+# we want it to make us money
+# Auto recall away or hide (or invis)
+# potentially adding the runebook position and then using a
+# charge vs recalling (right now it only recalls)
+### Distance checker for when to recall away (RANGE CHECK)
+# weight checks (recall home?)
+# Tinkering maybe
+# Reactive Armor / Magic Reflect if magery and regs
+# If we have followers - use guard (if we can summon, summon?)
+# Tracking how much we made in an hour
+# move items to bag (hide them in pouch)
+# if you die.. You got Owynd
+
+clearsysmsg 
+
+####
+# 0 = do both automatically
+# 1 = Mine only
+# 2 = Lumberjack only
+###
+@setvar! jase_MineOrLumberJackSwitch 20
+
+####
+# This is the value for recalling home to restock
+###
+@setvar! jase_RecallHomeAfterThisDiffWeight 100
+
+@setvar! jase_ItemDelayCD 650
+
+######
+# Edit your character name here and update the Your_Rune_Book_Or_Tome_Serial_Id
+# TIP: https://outlands.uorazorscripts.com/guides/how-to-find-item-information
+#####
+if name = "JC Supply"
+    @setvar! Your_Rune_Book_Or_Tome_Serial_Id 0x45A3AB8B
+elseif name = "Hodler"
+    @setvar! Your_Rune_Book_Or_Tome_Serial_Id 0x41755504
+elseif name = "Jaseowns supply"
+    @setvar! Your_Rune_Book_Or_Tome_Serial_Id 0x42BE50DA
+else
+    @setvar! Your_Rune_Book_Or_Tome_Serial_Id 0
+    @setvar! Your_Rune_Position 0 
+endif
+
+if not timerexists jase_ItemDelay
+    settimer jase_ItemDelay jase_ItemDelayCD
+endif
+
+if not varexist jase_PKEscape
+    @setvar! jase_PKEscape 0
+endif
+
+if jase_PKEscape = 1
+    overhead "Recalling home..." 34
+    overhead "if you want to use a runebook charge, uncomment Play Script" 77
+    overhead "with the ALT-M script on website" 66
+
+    # hotkey "Play Script: YourScript"
+    
+    if skill "Magery" >= 40 and find Your_Rune_Book_Or_Tome_Serial_Id backpack
+        while not targetexists
+            if findtype 8012 backpack as item
+                dclick item
+            else
+                cast "Recall"
+            endif
+            getlabel backpack jaseowns_PingCheck
+            if insysmsg "You do not have that spell!"
+                overhead "We cannot recall!" 34
+                break
+            endif
+        endwhile
+        target Your_Rune_Book_Or_Tome_Serial_Id
+    elseif skill "Hiding" >= 40 and not hidden
+        useskill "Hiding"
+    endif
+    wait 100
+endif
+
+if findtype "forge" ground -1 -1 2 as jorge
+    while findtype "forge" ground -1 -1 2 and findtype "iron ore" backpack as item
+        dclick item
+        wait jase_ItemDelayCD
+    endwhile
+endif
+
+if findtype "resource container" ground -1 -1 2 as jontainer
+    if counttype 7154 backpack > 0 or counttype 7127 backpack > 0
+        menu jontainer 0
+        wft 500
+        hotkey "Target Self"
+    endif
+endif
+
+if findtype "storage shelf" ground -1 -1 2 as jhelf
+    menu jhelf 1
+endif
+
+if jase_PKEscape = 1
+    @setvar! jase_PKEscape 0
+    overhead "Stopping the script!"
+    stop
+endif
+
+if not varexist jase_MyJoodies or not find jase_MyJoodies backpack
+    if findtype "pouch" backpack 38 as redPouch
+        overhead "Using a red pouch for jase_MyJoodies" 195
+        @setvar! jase_MyJoodies redPouch
+    elseif findtype "pouch" backpack 0 as regularPouch    
+        overhead "Using a regular pouch for jase_MyJoodies" 195
+        @setvar! jase_MyJoodies regularPouch
+    else
+        @setvar! jase_MyJoodies 0
+    endif
+    
+    if find jase_MyJoodies backpack
+        hotkey "Set Grab Item Hotbag"
+        target jase_MyJoodies
+    endif
+endif
+
+if skill "Tracking" > 0
+    if not findbuff "tracking"
+        clearsysmsg
+        while not gumpexists 4267467659
+            useskill 'tracking'
+            getlabel backpack jaseowns_PingCheck
+        endwhile
+        if gumpexists 4267467659
+            while not insysmsg "You will now hunt all hostile players."
+                gumpresponse 8 4267467659
+                waitforgump 4267467659 5000
+            endwhile
+            gumpresponse 6 4267467659
+            getlabel backpack jaseowns_PingCheck
+        endif
+        gumpclose 4267467659
+    endif
+endif
+
+
+
+
+if diffweight < jase_RecallHomeAfterThisDiffWeight
+    @setvar! jase_PKEscape 1
+    overhead "Weight check, heading home..." 34
+    wait jase_ItemDelayCD
+    replay
+endif
+
+if timerexists jase_TravelTimer
+    while timer jase_TravelTimer < 60000
+        overhead "waiting for travel..."
+        if not hidden and skill "Hiding" > 0
+            useskill "Hiding"
+        endif
+        if insysmsg "Now tracking" or insysmsg "Distance to"
+            if lhandempty 
+                // do nothing
+            else
+                hotkey "Arm/Disarm Left Hand"
+            endif
+            @setvar! jase_PKEscape 1
+            replay
+        endif
+        wait 500
+    endwhile
+endif
+
+
+if jase_MineOrLumberJackSwitch = 1
+    @setvar! jase_GatheringStatus 1
+elseif jase_MineOrLumberJackSwitch = 2 
+    @setvar! jase_GatheringStatus 2
+else
+    @setvar! jase_GatheringStatus 1
+    @setvar! jase_MineOrLumberJackSwitch 0
+endif
+
+while not dead
+        
+    while timer jase_ItemDelay < jase_ItemDelayCD
+        // wait
+    endwhile
+    
+    if findtype "forge" ground -1 -1 2 as jorge
+        while findtype "forge" ground -1 -1 2 and findtype "iron ore" backpack as item
+            dclick item
+            settimer jase_ItemDelay 0        
+            wait jase_ItemDelayCD
+        endwhile
+    endif
+    
+    if find jase_MyJoodies backpack and timer jase_ItemDelay >= jase_ItemDelayCD and findtype 7127|7154 backpack -1 -1 1 as item
+        getlabel item desc
+        overhead "Moving: {{desc}}" 291
+        hotkey "Grab Item"
+        target item
+        settimer jase_ItemDelay 0
+    endif
+
+        
+    while timer jase_ItemDelay < jase_ItemDelayCD
+        // wait
+    endwhile
+    
+    if diffweight < jase_RecallHomeAfterThisDiffWeight
+        @setvar! jase_PKEscape 1
+        overhead "Weight check, heading home..." 34
+        wait jase_ItemDelayCD
+        replay
+    endif
+        
+    if jase_GatheringStatus = 1
+        if rhandempty and skill "Mining" > 0
+            if findtype "pickaxe" backpack as item
+                dclick item
+                wait jase_ItemDelayCD
+            else
+                overhead "No pickaxe - restock!" 34
+            endif
+        endif
+    endif
+    
+    if jase_GatheringStatus = 2
+        if lhandempty and skill "Lumberjacking" > 0
+            if findtype "hatchet" backpack as item
+                dclick item
+                wait jase_ItemDelayCD
+            else
+                overhead "No hatchet - restock!" 34
+            endif
+        endif
+    endif
+
+    # Smart target is 2 tiles away
+    if not targetexists 
+        hotkey "Use item in hand"
+        wft 500
+    endif
+    if targetexists 
+        hotkey "Target Self"
+    endif
+    
+    settimer jase_Chopper 0
+    settimer jase_ItemDelay 0
+    
+    
+    @setvar! jase_BoardCount 0
+    @setvar! jase_IngotCount 0
+    @setvar! jase_OreCount 0
+    
+    if counttype 7127 backpack as jount
+        @setvar! jase_BoardCount jount
+    endif
+    if counttype 7154 backpack as jount
+        @setvar! jase_IngotCount jount
+    endif
+    if counttype 6585 backpack as jount
+        @setvar! jase_OreCount jount
+    endif
+
+    overhead "{{jase_BoardCount}} boards {{jase_IngotCount}} ingots {{jase_OreCount}} ore"
+    
+    for 100
+    
+        if insysmsg "Now tracking" or insysmsg "Distance to"
+            if lhandempty 
+                // do nothing
+            else
+                hotkey "Arm/Disarm Left Hand"
+            endif
+            @setvar! jase_PKEscape 1
+            replay
+        endif
+        
+        # Turn Logs to Boards
+        if findtype "hatchet" backpack or findtype "hatchet" lefthand
+            if findtype 7133 backpack as item
+                if find item backpack and timer jase_ItemDelay >= jase_ItemDelayCD
+                    dclick item
+                    settimer jase_ItemDelay 0
+                endif
+            endif
+        endif
+
+        if insysmsg "You do not see any harvestable resources nearby."
+            overhead "Nothing to harvest.. move!" 88
+            wait 500
+            if find jase_MyJoodies backpack and timer jase_ItemDelay >= jase_ItemDelayCD and findtype 7127|7154|6585 backpack -1 -1 1 as item
+                getlabel item desc
+                overhead "Moving: {{desc}}" 291
+                hotkey "Grab Item"
+                target item
+                settimer jase_ItemDelay 0
+            endif
+            
+            if jase_MineOrLumberJackSwitch = 0
+                if jase_GatheringStatus = 1
+                    @setvar! jase_GatheringStatus 2
+                elseif jase_GatheringStatus = 2
+                    @setvar! jase_GatheringStatus 1
+                endif
+            endif
+            break
+        elseif insysmsg "You chop" or insysmsg "You hack"
+            overhead "Time: {{jase_Chopper}}"
+            break
+        elseif insysmsg "You dig" or insysmsg "You loosen"
+            overhead "Time: {{jase_Chopper}}"
+            break
+        elseif insysmsg "You must wait"
+            overhead "Stop clicking shit" 34
+            overhead "Stop clicking shit" 34
+            overhead "Stop clicking shit" 34
+            wait jase_ItemDelayCD
+        elseif insysmsg "You have recently"
+            overhead "Waiting for travel..." 77
+            wait jase_ItemDelayCD
+            break
+        endif
+        wait 100
+    endfor
+endwhile
